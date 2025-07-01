@@ -262,3 +262,16 @@ canvas#fireworks {
   justify-content: center;
   align-items: center;
 }
+
+.bounce-text {
+  animation: bounceText 1s infinite alternate;
+}
+
+@keyframes bounceText {
+  from {
+    transform: translateX(-5px);
+  }
+  to {
+    transform: translateX(5px);
+  }
+}
