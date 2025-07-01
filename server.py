@@ -6,7 +6,7 @@ app = Flask(__name__)
 app.secret_key = "rahasia_kuat"
 USERS_FILE = "users.json"
 DATA_FILE = "data.txt"
-GLOBAL_PENGATURAN = "pengaturan.json"
+PENGATURAN_FILE = "pengaturan.json"
 TARGET_KEMENANGAN = 5000000
 
 # === INISIALISASI FILE ===
@@ -18,8 +18,8 @@ if not os.path.exists(DATA_FILE):
     with open(DATA_FILE, "w") as f:
         f.write("menang=0\nkalah=0\n")
 
-if not os.path.exists(GLOBAL_PENGATURAN):
-    with open(GLOBAL_PENGATURAN, "w") as f:
+if not os.path.exists(PENGATURAN_FILE):
+    with open(PENGATURAN_FILE, "w") as f:
         json.dump({
             "modeOtomatis": True,
             "persentaseMenang": 20,
@@ -46,32 +46,12 @@ def write_data(data):
         for k, v in data.items():
             f.write(f"{k}={v}\n")
 
-def get_pengaturan_file(target):
-    if target == "global":
-        return GLOBAL_PENGATURAN
-    elif target.startswith("user:"):
-        uname = target.split(":", 1)[1]
-        return f"pengaturan_{uname}.json"
-    elif target == "personal" and "username" in session:
-        return f"pengaturan_{session['username']}.json"
-    return GLOBAL_PENGATURAN
-
-def read_pengaturan(target="personal"):
-    file = get_pengaturan_file(target)
-    if not os.path.exists(file):
-        with open(file, "w") as f:
-            json.dump({
-                "modeOtomatis": True,
-                "persentaseMenang": 20,
-                "minMenang": 50000,
-                "maxMenang": 100000
-            }, f)
-    with open(file, "r") as f:
+def read_pengaturan():
+    with open(PENGATURAN_FILE, "r") as f:
         return json.load(f)
 
-def write_pengaturan(data, target="personal"):
-    file = get_pengaturan_file(target)
-    with open(file, "w") as f:
+def write_pengaturan(data):
+    with open(PENGATURAN_FILE, "w") as f:
         json.dump(data, f, indent=2)
 
 # === AUTH ===
@@ -123,18 +103,12 @@ def admin():
 # === PENGATURAN API ===
 @app.route("/pengaturan", methods=["GET", "POST"])
 def pengaturan():
-    target = request.args.get("target", "personal")
     if request.method == "GET":
-        return jsonify(read_pengaturan(target))
+        return jsonify(read_pengaturan())
     else:
         data = request.json
-        write_pengaturan(data, target)
+        write_pengaturan(data)
         return jsonify({"success": True})
-
-@app.route("/pengaturan/user_list")
-def pengaturan_user_list():
-    users = read_users()
-    return jsonify(list(users.keys()))
 
 # === LOGIC ===
 @app.route("/should_win")
