@@ -28,7 +28,6 @@ const spinSound = document.getElementById("spinSound");
 const winSound = document.getElementById("winSound");
 const bgm = document.getElementById("bgm");
 const saldoDisplay = document.getElementById("saldo");
-const winAmountDisplay = document.getElementById("win-amount");
 const winnerText = document.getElementById("winner-text");
 const popup = document.getElementById("winner-popup");
 
@@ -167,21 +166,21 @@ function animateWinPopup(jumlah) {
   popup.style.animation = "popFade 0.5s ease, zoomIn 0.5s ease";
   winnerText.innerHTML = `<div class='bounce-text' style="font-size: 2.5rem; text-shadow: 0 0 15px gold;">${judul}</div><br><span id='win-amount' style="font-size: 1.5rem;">+Rp 0</span>`;
 
-const counter = setInterval(() => {
-  current += langkah;
-  if (current >= jumlah) {
-    current = jumlah;
-    clearInterval(counter);
-    setTimeout(() => {
-      popup.style.display = "none";
-    }, 1200);
-  }
-  const dynamicWinAmount = document.getElementById("win-amount");
-  if (dynamicWinAmount) {
-    dynamicWinAmount.innerText = "+" + formatRupiah(current);
-  }
-}, 30);
-
+  const counter = setInterval(() => {
+    current += langkah;
+    if (current >= jumlah) {
+      current = jumlah;
+      clearInterval(counter);
+      setTimeout(() => {
+        popup.style.display = "none";
+      }, 1200);
+    }
+    const dynamicWinAmount = document.getElementById("win-amount");
+    if (dynamicWinAmount) {
+      dynamicWinAmount.innerText = "+" + formatRupiah(current);
+    }
+  }, 30);
+}
 
 function kirimLog(status, jumlah) {
   fetch("/log", {
