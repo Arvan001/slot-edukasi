@@ -105,7 +105,7 @@ async function putar() {
       .then(res => res.json())
       .then(data => {
         bolehMenang = data.bolehMenang;
-        jumlahMenang = data.jumlahMenang;
+        jumlahMenang = parseInt(data.jumlahMenang) || 0;
       })
       .catch(() => {
         bolehMenang = true;
@@ -116,7 +116,7 @@ async function putar() {
     jumlahMenang = pengaturan.kemenanganSpin[spinKe] || taruhan * 5;
   }
 
-  if (bolehMenang) {
+  if (bolehMenang && jumlahMenang > 0) {
     hasil = [simbolMenangFinal, simbolMenangFinal, simbolMenangFinal];
     menang = jumlahMenang;
   } else {
