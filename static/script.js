@@ -29,6 +29,7 @@ const winSound = document.getElementById("winSound");
 const bgm = document.getElementById("bgm");
 const saldoDisplay = document.getElementById("saldo");
 const winAmountDisplay = document.getElementById("win-amount");
+const winnerText = document.getElementById("winner-text");
 
 const simbol = ["🍒", "🍋", "🍊", "🔔", "⭐", "💎"];
 const simbolMenang = ["💎", "⭐", "🔔"];
@@ -167,24 +168,19 @@ function updateSaldoServer() {
   }).catch(e => console.error("Gagal update saldo:", e));
 }
 
-function autoSpinToggle() {
-  autoSpin = !autoSpin;
-  document.getElementById("autoBtn").textContent = autoSpin ? "🔁 AUTO: ON" : "🔁 AUTO: OFF";
-  if (autoSpin) putar();
-  else clearTimeout(autoSpinInterval);
-}
-
-function turboSpinToggle() {
-  turboSpin = !turboSpin;
-  document.getElementById("turboBtn").textContent = turboSpin ? "⚡ TURBO: ON" : "⚡ TURBO: OFF";
-}
-
 function animateWinPopup(jumlah) {
   const popup = document.getElementById("winner-popup");
   const coinRain = document.getElementById("coinRain");
   let current = 0;
-  let durasi = 1500;
+  let durasi = Math.min(3000, 1000 + jumlah / 100); // makin besar makin lama
   let langkah = Math.ceil(jumlah / (durasi / 30));
+
+  let judul = "🎉 WIN 🎉";
+  if (jumlah >= 1000000) judul = "🔥 SUPER WIN 🔥";
+  else if (jumlah >= 500000) judul = "💥 MEGA WIN 💥";
+  else if (jumlah >= 100000) judul = "✨ BIG WIN ✨";
+
+  winnerText.innerHTML = `<div class="bounce-text">${judul}</div><br><span id="win-amount">+Rp 0</span>`;
 
   popup.style.display = "flex";
   startFireworks();
@@ -195,15 +191,26 @@ function animateWinPopup(jumlah) {
     if (current >= jumlah) {
       current = jumlah;
       clearInterval(counter);
+      setTimeout(() => {
+        popup.style.display = "none";
+        stopFireworks();
+        stopCoinRain();
+      }, 1000); // tahan sebentar
     }
     winAmountDisplay.innerText = "+" + formatRupiah(current);
   }, 30);
+}
 
-  setTimeout(() => {
-    popup.style.display = "none";
-    stopFireworks();
-    stopCoinRain();
-  }, 3000);
+function autoSpinToggle() {
+  autoSpin = !autoSpin;
+  document.getElementById("autoBtn").textContent = autoSpin ? "🔁 AUTO: ON" : "🔁 AUTO: OFF";
+  if (autoSpin) putar();
+  else clearTimeout(autoSpinInterval);
+}
+
+function turboSpinToggle() {
+  turboSpin = !turboSpin;
+  document.getElementById("turboBtn").textContent = turboSpin ? "⚡ TURBO: ON" : "⚡ TURBO: OFF";
 }
 
 function startCoinRain() {
