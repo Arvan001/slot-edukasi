@@ -275,3 +275,13 @@ canvas#fireworks {
     transform: translateX(5px);
   }
 }
+
+.bounce-text {
+  animation: bounceText 1s infinite alternate;
+}
+
+@keyframes bounceText {
+  from { transform: translateX(-5px); }
+  to { transform: translateX(5px); }
+}
+
