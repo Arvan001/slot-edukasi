@@ -22,6 +22,8 @@
     label {
       display: block;
       margin-top: 15px;
+      font-weight: bold;
+      text-align: left;
     }
     input[type="number"], select {
       width: 100%;
@@ -51,14 +53,20 @@
   <h2>🔧 Panel Pengaturan Edukasi</h2>
 
   <form id="formPengaturan">
-    <label>Mode Otomatis:</label>
+    <label>🎯 Mode Otomatis:</label>
     <select id="modeOtomatis">
       <option value="true">ON</option>
       <option value="false">OFF</option>
     </select>
 
-    <label>Persentase Menang (%):</label>
+    <label>📈 Persentase Menang (%):</label>
     <input type="number" id="persentaseMenang" min="0" max="100">
+
+    <label>💰 Nilai Menang Minimum:</label>
+    <input type="number" id="minMenang" min="1000" step="1000">
+
+    <label>💰 Nilai Menang Maksimum:</label>
+    <input type="number" id="maxMenang" min="1000" step="1000">
 
     <button type="submit">Simpan Pengaturan</button>
     <div id="successMsg" class="success"></div>
@@ -71,6 +79,8 @@
         .then(data => {
           document.getElementById("modeOtomatis").value = data.modeOtomatis;
           document.getElementById("persentaseMenang").value = data.persentaseMenang;
+          document.getElementById("minMenang").value = data.minMenang || 50000;
+          document.getElementById("maxMenang").value = data.maxMenang || 100000;
         });
     }
 
@@ -78,7 +88,9 @@
       e.preventDefault();
       const pengaturanBaru = {
         modeOtomatis: document.getElementById("modeOtomatis").value === "true",
-        persentaseMenang: parseInt(document.getElementById("persentaseMenang").value)
+        persentaseMenang: parseInt(document.getElementById("persentaseMenang").value),
+        minMenang: parseInt(document.getElementById("minMenang").value),
+        maxMenang: parseInt(document.getElementById("maxMenang").value)
       };
 
       fetch("/pengaturan", {
