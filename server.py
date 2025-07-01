@@ -53,6 +53,11 @@ def read_pengaturan():
 def write_pengaturan(data):
     with open(PENGATURAN_FILE, "w") as f:
         json.dump(data, f, indent=2)
+@app.route("/debug/users")
+
+def debug_users():
+    with open("users.json", "r") as f:
+        return "<pre>" + f.read() + "</pre>"
 
 # === AUTH ===
 @app.route("/", methods=["GET", "POST"])
