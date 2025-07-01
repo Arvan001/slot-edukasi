@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pengaturan Admin</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+    form {
+      background: #222;
+      padding: 20px;
+      border-radius: 10px;
+      max-width: 400px;
+      margin: auto;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+    }
+    input[type="number"], select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border-radius: 5px;
+      border: none;
+      font-size: 1rem;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: #28a745;
+      border: none;
+      border-radius: 5px;
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    .success {
+      color: lime;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h2>🔧 Panel Pengaturan Edukasi</h2>
+
+  <form id="formPengaturan">
+    <label>Mode Otomatis:</label>
+    <select id="modeOtomatis">
+      <option value="true">ON</option>
+      <option value="false">OFF</option>
+    </select>
+
+    <label>Persentase Menang (%):</label>
+    <input type="number" id="persentaseMenang" min="0" max="100">
+
+    <button type="submit">Simpan Pengaturan</button>
+    <div id="successMsg" class="success"></div>
+  </form>
+
+  <script>
+    function loadPengaturan() {
+      fetch("/pengaturan?_=" + Date.now())
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById("modeOtomatis").value = data.modeOtomatis;
+          document.getElementById("persentaseMenang").value = data.persentaseMenang;
+        });
+    }
+
+    document.getElementById("formPengaturan").addEventListener("submit", function(e) {
+      e.preventDefault();
+      const pengaturanBaru = {
+        modeOtomatis: document.getElementById("modeOtomatis").value === "true",
+        persentaseMenang: parseInt(document.getElementById("persentaseMenang").value)
+      };
+
+      fetch("/pengaturan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(pengaturanBaru)
+      })
+      .then(res => res.json())
+      .then(() => {
+        document.getElementById("successMsg").textContent = "✅ Pengaturan disimpan!";
+        setTimeout(() => document.getElementById("successMsg").textContent = "", 3000);
+      });
+    });
+
+    loadPengaturan();
+  </script>
+</body>
+</html>
