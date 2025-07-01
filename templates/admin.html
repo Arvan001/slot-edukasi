@@ -1,111 +1,120 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pengaturan Admin</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Panel</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron&display=swap" rel="stylesheet">
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #111;
-      color: white;
-      padding: 20px;
+      font-family: 'Orbitron', sans-serif;
+      background: #000;
+      color: #0ff;
       text-align: center;
-    }
-    form {
-      background: #222;
       padding: 20px;
-      border-radius: 10px;
-      max-width: 400px;
-      margin: auto;
+    }
+    h1 {
+      text-shadow: 0 0 5px #0ff;
+    }
+    .panel {
+      background: #111;
+      padding: 20px;
+      border-radius: 12px;
+      display: inline-block;
+      box-shadow: 0 0 15px #0ff;
+      text-align: left;
     }
     label {
       display: block;
-      margin-top: 15px;
+      margin-top: 10px;
       font-weight: bold;
-      text-align: left;
     }
     input[type="number"], select {
       width: 100%;
-      padding: 8px;
-      margin-top: 5px;
+      padding: 6px;
+      margin-top: 4px;
+      background: #000;
+      color: #0ff;
+      border: 1px solid #0ff;
       border-radius: 5px;
-      border: none;
-      font-size: 1rem;
     }
     button {
       margin-top: 20px;
       padding: 10px 20px;
-      background: #28a745;
+      background: #0ff;
+      color: #000;
       border: none;
-      border-radius: 5px;
-      color: white;
-      font-size: 1rem;
+      border-radius: 6px;
       cursor: pointer;
+      font-weight: bold;
     }
-    .success {
-      color: lime;
-      margin-top: 10px;
+    .status {
+      margin-top: 20px;
+      font-size: 1rem;
+      color: #ff0;
     }
   </style>
 </head>
 <body>
-  <h2>🔧 Panel Pengaturan Edukasi</h2>
-
-  <form id="formPengaturan">
-    <label>🎯 Mode Otomatis:</label>
-    <select id="modeOtomatis">
-      <option value="true">ON</option>
-      <option value="false">OFF</option>
+  <h1>🎛️ Panel Admin</h1>
+  <div class="panel">
+    <label for="mode">Mode Otomatis:</label>
+    <select id="mode">
+      <option value="true">Aktif</option>
+      <option value="false">Nonaktif</option>
     </select>
 
-    <label>📈 Persentase Menang (%):</label>
-    <input type="number" id="persentaseMenang" min="0" max="100">
+    <label for="persentase">Persentase Menang (%):</label>
+    <input type="number" id="persentase" min="0" max="100" step="1">
 
-    <label>💰 Nilai Menang Minimum:</label>
-    <input type="number" id="minMenang" min="1000" step="1000">
+    <label for="minMenang">Min Kemenangan:</label>
+    <input type="number" id="minMenang" min="10000" step="1000">
 
-    <label>💰 Nilai Menang Maksimum:</label>
-    <input type="number" id="maxMenang" min="1000" step="1000">
+    <label for="maxMenang">Max Kemenangan:</label>
+    <input type="number" id="maxMenang" min="10000" step="1000">
 
-    <button type="submit">Simpan Pengaturan</button>
-    <div id="successMsg" class="success"></div>
-  </form>
+    <button onclick="simpanPengaturan()">💾 Simpan Pengaturan</button>
+
+    <div class="status" id="statusInfo"></div>
+  </div>
 
   <script>
-    function loadPengaturan() {
-      fetch("/pengaturan?_=" + Date.now())
-        .then(res => res.json())
-        .then(data => {
-          document.getElementById("modeOtomatis").value = data.modeOtomatis;
-          document.getElementById("persentaseMenang").value = data.persentaseMenang;
-          document.getElementById("minMenang").value = data.minMenang || 50000;
-          document.getElementById("maxMenang").value = data.maxMenang || 100000;
-        });
+    async function ambilPengaturan() {
+      const res = await fetch('/pengaturan');
+      const data = await res.json();
+      document.getElementById('mode').value = data.modeOtomatis;
+      document.getElementById('persentase').value = data.persentaseMenang;
+      document.getElementById('minMenang').value = data.minMenang;
+      document.getElementById('maxMenang').value = data.maxMenang;
     }
 
-    document.getElementById("formPengaturan").addEventListener("submit", function(e) {
-      e.preventDefault();
-      const pengaturanBaru = {
-        modeOtomatis: document.getElementById("modeOtomatis").value === "true",
-        persentaseMenang: parseInt(document.getElementById("persentaseMenang").value),
-        minMenang: parseInt(document.getElementById("minMenang").value),
-        maxMenang: parseInt(document.getElementById("maxMenang").value)
+    async function simpanPengaturan() {
+      const mode = document.getElementById('mode').value === "true";
+      const persentase = parseInt(document.getElementById('persentase').value);
+      const minMenang = parseInt(document.getElementById('minMenang').value);
+      const maxMenang = parseInt(document.getElementById('maxMenang').value);
+
+      const body = {
+        modeOtomatis: mode,
+        persentaseMenang: persentase,
+        minMenang,
+        maxMenang
       };
 
-      fetch("/pengaturan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(pengaturanBaru)
-      })
-      .then(res => res.json())
-      .then(() => {
-        document.getElementById("successMsg").textContent = "✅ Pengaturan disimpan!";
-        setTimeout(() => document.getElementById("successMsg").textContent = "", 3000);
+      const res = await fetch('/pengaturan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
       });
-    });
 
-    loadPengaturan();
+      if (res.ok) {
+        document.getElementById("statusInfo").innerText = "✅ Pengaturan berhasil disimpan.";
+      } else {
+        document.getElementById("statusInfo").innerText = "❌ Gagal menyimpan pengaturan.";
+      }
+    }
+
+    ambilPengaturan();
   </script>
 </body>
 </html>
