@@ -1,4 +1,4 @@
-# Tambahan pengaturan per user
+# Tambahan pengaturan per user dengan tampilan semua user dan pengaturan spesifik
 from flask import Flask, request, jsonify, render_template, redirect, session
 from werkzeug.security import generate_password_hash, check_password_hash
 import os, json, random
@@ -47,28 +47,35 @@ def write_data(data):
         for k, v in data.items():
             f.write(f"{k}={v}\n")
 
+def pengaturan_path(username):
+    return f"pengaturan_{username}.json"
+
 def user_pengaturan_file():
     if "username" in session:
-        return f"pengaturan_{session['username']}.json"
+        return pengaturan_path(session['username'])
     return None
 
-def read_pengaturan():
-    if "username" in session:
-        user_file = user_pengaturan_file()
-        if user_file and os.path.exists(user_file):
-            with open(user_file, "r") as f:
-                return json.load(f)
+def read_pengaturan(username=None):
+    if username:
+        file = pengaturan_path(username)
+    else:
+        file = user_pengaturan_file()
+
+    if file and os.path.exists(file):
+        with open(file, "r") as f:
+            return json.load(f)
     with open(GLOBAL_PENGATURAN, "r") as f:
         return json.load(f)
 
-def write_pengaturan(data):
-    if data.get("target") == "personal" and "username" in session:
-        fname = user_pengaturan_file()
-        with open(fname, "w") as f:
-            json.dump(data, f)
-    else:
-        with open(GLOBAL_PENGATURAN, "w") as f:
-            json.dump(data, f)
+def write_pengaturan(data, username=None):
+    file = GLOBAL_PENGATURAN
+    if username:
+        file = pengaturan_path(username)
+    elif data.get("target") == "personal" and "username" in session:
+        file = pengaturan_path(session["username"])
+
+    with open(file, "w") as f:
+        json.dump(data, f)
 
 # === AUTH ROUTES ===
 @app.route("/", methods=["GET", "POST"])
@@ -172,11 +179,27 @@ def should_win():
 @app.route("/pengaturan", methods=["GET", "POST"])
 def pengaturan():
     if request.method == "GET":
+        if "username" not in session:
+            return jsonify({})
         return jsonify(read_pengaturan())
     else:
         data = request.json
-        write_pengaturan(data)
+        if data.get("target") == "username" and "username" in session:
+            write_pengaturan(data, session["username"])
+        elif data.get("target") and data.get("target") != "global":
+            write_pengaturan(data, data.get("target"))
+        else:
+            write_pengaturan(data)
         return jsonify({"success": True})
+
+@app.route("/pengaturan/user_list")
+def daftar_pengguna():
+    users = read_users()
+    return jsonify(list(users.keys()))
+
+@app.route("/pengaturan/<username>")
+def pengaturan_user(username):
+    return jsonify(read_pengaturan(username))
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)
