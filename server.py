@@ -88,6 +88,12 @@ def game():
         return redirect("/")
     return render_template("game.html")
 
+@app.route("/admin")
+def admin():
+    if "username" not in session:
+        return redirect("/")
+    return render_template("admin.html")
+
 # === API SALDO ===
 @app.route("/api/saldo")
 def api_saldo():
