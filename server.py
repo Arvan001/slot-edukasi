@@ -1,4 +1,3 @@
-# Tambahan pengaturan per user dengan tampilan semua user dan pengaturan spesifik
 from flask import Flask, request, jsonify, render_template, redirect, session
 from werkzeug.security import generate_password_hash, check_password_hash
 import os, json, random
@@ -28,7 +27,7 @@ if not os.path.exists(GLOBAL_PENGATURAN):
             "maxMenang": 100000
         }, f)
 
-# === UTIL FILE ===
+# === UTIL ===
 def read_users():
     with open(USERS_FILE, "r") as f:
         return json.load(f)
@@ -47,37 +46,35 @@ def write_data(data):
         for k, v in data.items():
             f.write(f"{k}={v}\n")
 
-def pengaturan_path(username):
-    return f"pengaturan_{username}.json"
+def get_pengaturan_file(target):
+    if target == "global":
+        return GLOBAL_PENGATURAN
+    elif target.startswith("user:"):
+        uname = target.split(":", 1)[1]
+        return f"pengaturan_{uname}.json"
+    elif target == "personal" and "username" in session:
+        return f"pengaturan_{session['username']}.json"
+    return GLOBAL_PENGATURAN
 
-def user_pengaturan_file():
-    if "username" in session:
-        return pengaturan_path(session['username'])
-    return None
-
-def read_pengaturan(username=None):
-    if username:
-        file = pengaturan_path(username)
-    else:
-        file = user_pengaturan_file()
-
-    if file and os.path.exists(file):
-        with open(file, "r") as f:
-            return json.load(f)
-    with open(GLOBAL_PENGATURAN, "r") as f:
+def read_pengaturan(target="personal"):
+    file = get_pengaturan_file(target)
+    if not os.path.exists(file):
+        with open(file, "w") as f:
+            json.dump({
+                "modeOtomatis": True,
+                "persentaseMenang": 20,
+                "minMenang": 50000,
+                "maxMenang": 100000
+            }, f)
+    with open(file, "r") as f:
         return json.load(f)
 
-def write_pengaturan(data, username=None):
-    file = GLOBAL_PENGATURAN
-    if username:
-        file = pengaturan_path(username)
-    elif data.get("target") == "personal" and "username" in session:
-        file = pengaturan_path(session["username"])
-
+def write_pengaturan(data, target="personal"):
+    file = get_pengaturan_file(target)
     with open(file, "w") as f:
-        json.dump(data, f)
+        json.dump(data, f, indent=2)
 
-# === AUTH ROUTES ===
+# === AUTH ===
 @app.route("/", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -110,6 +107,7 @@ def logout():
     session.pop("username", None)
     return redirect("/")
 
+# === PAGE ===
 @app.route("/game")
 def game():
     if "username" not in session:
@@ -122,20 +120,39 @@ def admin():
         return redirect("/")
     return render_template("admin.html")
 
-# === API SALDO ===
-@app.route("/api/saldo")
-def api_saldo():
-    users = read_users()
-    return jsonify({"saldo": users[session["username"]]["saldo"]})
+# === PENGATURAN API ===
+@app.route("/pengaturan", methods=["GET", "POST"])
+def pengaturan():
+    target = request.args.get("target", "personal")
+    if request.method == "GET":
+        return jsonify(read_pengaturan(target))
+    else:
+        data = request.json
+        write_pengaturan(data, target)
+        return jsonify({"success": True})
 
-@app.route("/api/update_saldo", methods=["POST"])
-def update_saldo():
+@app.route("/pengaturan/user_list")
+def pengaturan_user_list():
     users = read_users()
-    users[session["username"]]["saldo"] = request.json.get("saldo", 0)
-    write_users(users)
-    return jsonify({"success": True})
+    return jsonify(list(users.keys()))
 
-# === SISTEM LOG / KEMENANGAN ===
+# === LOGIC ===
+@app.route("/should_win")
+def should_win():
+    pengaturan = read_pengaturan()
+    data = read_data()
+    if data["menang"] >= TARGET_KEMENANGAN:
+        return jsonify({"bolehMenang": False, "jumlahMenang": 0})
+
+    chance = random.randint(1, 100)
+    if chance <= pengaturan.get("persentaseMenang", 20):
+        jumlah = random.randint(
+            pengaturan.get("minMenang", 50000),
+            pengaturan.get("maxMenang", 100000)
+        )
+        return jsonify({"bolehMenang": True, "jumlahMenang": jumlah})
+    return jsonify({"bolehMenang": False, "jumlahMenang": 0})
+
 @app.route("/log", methods=["POST"])
 def log_spin():
     body = request.json
@@ -161,45 +178,18 @@ def status():
         "targetTercapai": data["menang"] >= TARGET_KEMENANGAN
     })
 
-@app.route("/should_win")
-def should_win():
-    pengaturan = read_pengaturan()
-    data = read_data()
-    if data["menang"] >= TARGET_KEMENANGAN:
-        return jsonify({"bolehMenang": False, "jumlahMenang": 0})
-
-    chance = random.randint(1, 100)
-    if chance <= pengaturan.get("persentaseMenang", 20):
-        min_menang = pengaturan.get("minMenang", 50000)
-        max_menang = pengaturan.get("maxMenang", 100000)
-        jumlah = random.randint(min_menang, max_menang)
-        return jsonify({"bolehMenang": True, "jumlahMenang": jumlah})
-    return jsonify({"bolehMenang": False, "jumlahMenang": 0})
-
-@app.route("/pengaturan", methods=["GET", "POST"])
-def pengaturan():
-    if request.method == "GET":
-        if "username" not in session:
-            return jsonify({})
-        return jsonify(read_pengaturan())
-    else:
-        data = request.json
-        if data.get("target") == "username" and "username" in session:
-            write_pengaturan(data, session["username"])
-        elif data.get("target") and data.get("target") != "global":
-            write_pengaturan(data, data.get("target"))
-        else:
-            write_pengaturan(data)
-        return jsonify({"success": True})
-
-@app.route("/pengaturan/user_list")
-def daftar_pengguna():
+@app.route("/api/saldo")
+def api_saldo():
     users = read_users()
-    return jsonify(list(users.keys()))
+    return jsonify({"saldo": users[session["username"]]["saldo"]})
 
-@app.route("/pengaturan/<username>")
-def pengaturan_user(username):
-    return jsonify(read_pengaturan(username))
+@app.route("/api/update_saldo", methods=["POST"])
+def update_saldo():
+    users = read_users()
+    users[session["username"]]["saldo"] = request.json.get("saldo", 0)
+    write_users(users)
+    return jsonify({"success": True})
 
+# === RUN ===
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)
