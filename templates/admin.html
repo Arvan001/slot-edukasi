@@ -64,6 +64,13 @@
 <body>
   <div class="container">
     <h2>🎛️ Pengaturan Admin</h2>
+
+    <label for="pengguna">Pengaturan untuk:</label>
+    <select id="pengguna">
+      <option value="global">🌐 Semua Pemain</option>
+      <option value="personal">👤 Akun Ini Saja</option>
+    </select>
+
     <label for="mode">Mode Otomatis:</label>
     <select id="mode">
       <option value="true">Aktif</option>
@@ -96,12 +103,15 @@
 
     async function simpan() {
       const status = document.getElementById('status');
+      const pengguna = document.getElementById('pengguna').value;
       const pengaturan = {
         modeOtomatis: document.getElementById('mode').value === 'true',
         persentaseMenang: parseInt(document.getElementById('rate').value),
         minMenang: parseInt(document.getElementById('min').value),
-        maxMenang: parseInt(document.getElementById('max').value)
+        maxMenang: parseInt(document.getElementById('max').value),
+        target: pengguna
       };
+
       const res = await fetch('/pengaturan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
