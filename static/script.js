@@ -279,11 +279,20 @@ function stopFireworks() {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+  // Ambil saldo
   fetch("/api/saldo")
     .then(res => res.json())
     .then(data => {
       saldo = data.saldo;
       tampilkanSaldo();
+    });
+
+  // Ambil pengaturan terbaru dari backend
+  fetch("/pengaturan")
+    .then(res => res.json())
+    .then(data => {
+      pengaturan.modeOtomatis = data.modeOtomatis;
+      pengaturan.persentaseMenang = data.persentaseMenang;
     });
 
   document.body.addEventListener('click', () => {
