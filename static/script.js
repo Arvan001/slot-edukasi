@@ -5,7 +5,9 @@ let pengaturan = {
     4: 100000
   },
   modeOtomatis: true,
-  persentaseMenang: 20
+  persentaseMenang: 20,
+  minMenang: 50000,
+  maxMenang: 100000
 };
 
 let saldo = 0;
@@ -94,23 +96,27 @@ async function putar() {
   let menang = 0;
   let simbolMenangFinal = simbolMenang[Math.floor(Math.random() * simbolMenang.length)];
   let bolehMenang = false;
+  let jumlahMenang = 0;
 
   if (pengaturan.modeOtomatis) {
     await fetch("/should_win")
       .then(res => res.json())
       .then(data => {
         bolehMenang = data.bolehMenang;
+        jumlahMenang = data.jumlahMenang;
       })
       .catch(() => {
         bolehMenang = true;
+        jumlahMenang = 50000;
       });
   } else {
     bolehMenang = pengaturan.kemenanganSpin.hasOwnProperty(spinKe);
+    jumlahMenang = pengaturan.kemenanganSpin[spinKe] || taruhan * 5;
   }
 
   if (bolehMenang) {
     hasil = [simbolMenangFinal, simbolMenangFinal, simbolMenangFinal];
-    menang = pengaturan.kemenanganSpin[spinKe] || taruhan * 5;
+    menang = jumlahMenang;
   } else {
     hasil = Array.from({ length: 3 }, () => simbol[Math.floor(Math.random() * simbol.length)]);
     if (hasil[0] === hasil[1] && hasil[1] === hasil[2]) {
@@ -278,15 +284,6 @@ function stopFireworks() {
   particles = [];
 }
 
-function refreshPengaturan() {
-  fetch("/pengaturan?_=" + new Date().getTime())
-    .then(res => res.json())
-    .then(data => {
-      pengaturan.modeOtomatis = data.modeOtomatis;
-      pengaturan.persentaseMenang = data.persentaseMenang;
-    });
-}
-
 window.addEventListener('DOMContentLoaded', () => {
   fetch("/api/saldo")
     .then(res => res.json())
@@ -295,8 +292,14 @@ window.addEventListener('DOMContentLoaded', () => {
       tampilkanSaldo();
     });
 
-  refreshPengaturan();
-  setInterval(refreshPengaturan, 10000); // refresh setiap 10 detik
+  fetch("/pengaturan")
+    .then(res => res.json())
+    .then(data => {
+      pengaturan.modeOtomatis = data.modeOtomatis;
+      pengaturan.persentaseMenang = data.persentaseMenang;
+      pengaturan.minMenang = data.minMenang || 50000;
+      pengaturan.maxMenang = data.maxMenang || 100000;
+    });
 
   document.body.addEventListener('click', () => {
     bgm.volume = 0.3;
