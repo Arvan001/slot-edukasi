@@ -1,15 +1,14 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Panel Admin Slot Edukasi</title>
+  <title>Panel Admin Slot</title>
   <style>
     body {
-      font-family: 'Segoe UI', sans-serif;
+      font-family: sans-serif;
       background: #111;
       color: #fff;
-      margin: 0;
       padding: 20px;
     }
     .container {
@@ -18,12 +17,7 @@
       background: #222;
       padding: 20px;
       border-radius: 10px;
-      box-shadow: 0 0 15px rgba(255,255,255,0.1);
-    }
-    h2 {
-      text-align: center;
-      margin-bottom: 20px;
-      color: #00ffff;
+      box-shadow: 0 0 10px #0ff;
     }
     label {
       display: block;
@@ -31,102 +25,49 @@
     }
     input, select {
       width: 100%;
-      padding: 10px;
-      border-radius: 5px;
+      padding: 8px;
       border: none;
-      font-size: 1rem;
+      border-radius: 5px;
     }
     button {
       margin-top: 20px;
-      padding: 10px 15px;
-      background: #28a745;
-      border: none;
-      color: white;
+      padding: 10px 20px;
       font-size: 1rem;
+      background: #0ff;
+      color: #000;
+      border: none;
       border-radius: 5px;
       cursor: pointer;
-      width: 100%;
     }
     .status {
       margin-top: 10px;
-      text-align: center;
-      font-size: 0.95rem;
-    }
-    a {
-      display: block;
-      text-align: center;
-      margin-top: 20px;
-      color: #ccc;
-      text-decoration: none;
+      color: lime;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>🎛️ Pengaturan Admin</h2>
+    <h2>Pengaturan Global Slot</h2>
 
-    <label for="pengguna">Pengaturan untuk:</label>
-    <select id="pengguna">
-      <option value="global">🌐 Semua Pemain</option>
-      <option value="personal">👤 Akun Ini Saja</option>
-    </select>
-
-    <label for="mode">Mode Otomatis:</label>
-    <select id="mode">
+    <label>Mode Otomatis</label>
+    <select id="modeOtomatis">
       <option value="true">Aktif</option>
-      <option value="false">Nonaktif</option>
+      <option value="false">Mati</option>
     </select>
 
-    <label for="rate">Persentase Kemenangan (%):</label>
-    <input type="number" id="rate" min="0" max="100" />
+    <label>Persentase Menang (%)</label>
+    <input type="number" id="persentaseMenang" min="0" max="100" step="1" />
 
-    <label for="min">Minimal Kemenangan:</label>
-    <input type="number" id="min" min="0" />
+    <label>Minimum Menang (Rp)</label>
+    <input type="number" id="minMenang" step="1000" />
 
-    <label for="max">Maksimal Kemenangan:</label>
-    <input type="number" id="max" min="0" />
+    <label>Maksimum Menang (Rp)</label>
+    <input type="number" id="maxMenang" step="1000" />
 
-    <button onclick="simpan()">💾 Simpan Pengaturan</button>
-    <div class="status" id="status"></div>
-    <a href="/game">🎰 Kembali ke Game</a>
+    <button onclick="simpanPengaturan()">💾 Simpan</button>
+    <div class="status" id="statusMsg"></div>
   </div>
 
-  <script>
-    async function loadPengaturan() {
-      const res = await fetch('/pengaturan');
-      const data = await res.json();
-      document.getElementById('mode').value = data.modeOtomatis.toString();
-      document.getElementById('rate').value = data.persentaseMenang;
-      document.getElementById('min').value = data.minMenang || 50000;
-      document.getElementById('max').value = data.maxMenang || 100000;
-    }
-
-    async function simpan() {
-      const status = document.getElementById('status');
-      const pengguna = document.getElementById('pengguna').value;
-      const pengaturan = {
-        modeOtomatis: document.getElementById('mode').value === 'true',
-        persentaseMenang: parseInt(document.getElementById('rate').value),
-        minMenang: parseInt(document.getElementById('min').value),
-        maxMenang: parseInt(document.getElementById('max').value),
-        target: pengguna
-      };
-
-      const res = await fetch('/pengaturan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(pengaturan)
-      });
-      if (res.ok) {
-        status.innerText = '✅ Pengaturan berhasil disimpan.';
-        status.style.color = 'lightgreen';
-      } else {
-        status.innerText = '❌ Gagal menyimpan pengaturan.';
-        status.style.color = 'tomato';
-      }
-    }
-
-    loadPengaturan();
-  </script>
+  <script src="/static/admin.js"></script>
 </body>
 </html>
