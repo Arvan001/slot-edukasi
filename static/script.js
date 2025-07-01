@@ -31,11 +31,6 @@ const saldoDisplay = document.getElementById("saldo");
 const winAmountDisplay = document.getElementById("win-amount");
 const winnerText = document.getElementById("winner-text");
 const popup = document.getElementById("winner-popup");
-const fwCanvas = document.getElementById("fireworks");
-const ctx = fwCanvas.getContext("2d");
-
-let particles = [];
-let intervalId;
 
 const simbol = ["🍒", "🍋", "🍊", "🔔", "⭐", "💎"];
 const simbolMenang = ["💎", "⭐", "🔔"];
@@ -159,7 +154,6 @@ async function putar() {
 }
 
 function animateWinPopup(jumlah) {
-  const coinRain = document.getElementById("coinRain");
   let current = 0;
   let durasi = Math.min(3000, 1000 + jumlah / 100);
   let langkah = Math.ceil(jumlah / (durasi / 30));
@@ -169,11 +163,10 @@ function animateWinPopup(jumlah) {
   else if (jumlah >= 500000) judul = "💥 MEGA WIN 💥";
   else if (jumlah >= 100000) judul = "✨ BIG WIN ✨";
 
-  startFireworks(); // Mulai kembang api lebih dulu (di belakang)
   popup.style.display = "flex";
-  winnerText.innerHTML = `<div class='bounce-text'>${judul}</div><br><span id='win-amount'>+Rp 0</span>`;
+  popup.style.animation = "popFade 0.5s ease, zoomIn 0.5s ease";
+  winnerText.innerHTML = `<div class='bounce-text' style="font-size: 2.5rem; text-shadow: 0 0 15px gold;">${judul}</div><br><span id='win-amount' style="font-size: 1.5rem;">+Rp 0</span>`;
 
-  startCoinRain();
   const counter = setInterval(() => {
     current += langkah;
     if (current >= jumlah) {
@@ -181,9 +174,7 @@ function animateWinPopup(jumlah) {
       clearInterval(counter);
       setTimeout(() => {
         popup.style.display = "none";
-        stopFireworks();
-        stopCoinRain();
-      }, 1000);
+      }, 1200);
     }
     winAmountDisplay.innerText = "+" + formatRupiah(current);
   }, 30);
@@ -215,79 +206,6 @@ function autoSpinToggle() {
 function turboSpinToggle() {
   turboSpin = !turboSpin;
   document.getElementById("turboBtn").textContent = turboSpin ? "⚡ TURBO: ON" : "⚡ TURBO: OFF";
-}
-
-function startCoinRain() {
-  const container = document.getElementById("coinRain");
-  container.innerHTML = "";
-  container.style.display = "block";
-  for (let i = 0; i < 50; i++) {
-    const coin = document.createElement("div");
-    coin.className = "coin";
-    coin.style.left = Math.random() * 100 + "%";
-    coin.style.animationDelay = Math.random() + "s";
-    container.appendChild(coin);
-  }
-}
-
-function stopCoinRain() {
-  const container = document.getElementById("coinRain");
-  container.innerHTML = "";
-  container.style.display = "none";
-}
-
-function resizeCanvas() {
-  fwCanvas.width = window.innerWidth;
-  fwCanvas.height = window.innerHeight;
-}
-window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
-
-function random(min, max) {
-  return Math.random() * (max - min) + min;
-}
-
-function createParticle() {
-  const colors = ["#ff0", "#f00", "#0f0", "#0ff", "#f0f", "#fff"];
-  return {
-    x: fwCanvas.width / 2,
-    y: fwCanvas.height / 2,
-    vx: random(-5, 5),
-    vy: random(-5, 5),
-    size: random(2, 5),
-    color: colors[Math.floor(Math.random() * colors.length)],
-    life: 60
-  };
-}
-
-function updateParticles() {
-  ctx.clearRect(0, 0, fwCanvas.width, fwCanvas.height);
-  for (let i = particles.length - 1; i >= 0; i--) {
-    let p = particles[i];
-    p.x += p.vx;
-    p.y += p.vy;
-    p.life--;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.size, 0, 2 * Math.PI);
-    ctx.fillStyle = p.color;
-    ctx.fill();
-    if (p.life <= 0) particles.splice(i, 1);
-  }
-}
-
-function loopFireworks() {
-  particles.push(...Array.from({ length: 5 }, createParticle));
-  updateParticles();
-}
-
-function startFireworks() {
-  intervalId = setInterval(loopFireworks, 50);
-}
-
-function stopFireworks() {
-  clearInterval(intervalId);
-  ctx.clearRect(0, 0, fwCanvas.width, fwCanvas.height);
-  particles = [];
 }
 
 window.addEventListener('DOMContentLoaded', () => {
