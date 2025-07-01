@@ -1,0 +1,10 @@
+{
+  "admin": {
+    "password": "scrypt:32768:8:1$xcZO5OhPTDf7G40N$f496368907a448d6e19a12631abc1ee5499ce1cff07ae632318452d988e0907d58b1842b35cf7a1ccb9f0cd653dc67fad21b3dd67063ca9befbbb1c8f7a9a577",
+    "saldo": 100000
+  },
+  "aku": {
+    "password": "scrypt:32768:8:1$hKo7zT8UxDVOJWbh$fc08b7f327391e2f05dae5b69f077939ba99bec00b4333b9c79c9541ddb31f416b338e3ee1d5d21e3eb1a874a35f269ba52452894e915f736880a6eacbf09097",
+    "saldo": 170000
+  }
+}

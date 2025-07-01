@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulasi Slot Edukasi</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron&display=swap" rel="stylesheet">
+</head>
+<body>
+  <h1>🎰 fikri gacor 999 🎰</h1>
+
+  <div class="slot-frame fancy-frame">
+    <div class="slot-title">💎 Lucky Machine 💎</div>
+    <div class="slot-container" id="slot">
+      <div class="reel fancy-reel" id="r1"><div class="reel-items"></div></div>
+      <div class="reel fancy-reel" id="r2"><div class="reel-items"></div></div>
+      <div class="reel fancy-reel" id="r3"><div class="reel-items"></div></div>
+    </div>
+    <div class="slot-lights"></div>
+  </div>
+
+  <div class="control-panel">
+    <div class="saldo-box">
+      💰 <span class="label">Saldo:</span> <span id="saldo" class="saldo">Rp 0</span>
+    </div>
+
+    <div class="taruhan-box">
+      💸 <span class="label">Taruhan:</span> 
+      <input type="number" id="taruhan" value="10000" min="1000" step="1000" />
+    </div>
+
+    <div class="buttons">
+      <button onclick="putar()" class="btn-spin">▶️ SPIN</button>
+      <button onclick="autoSpinToggle()" id="autoBtn" class="btn-auto">🔁 AUTO: OFF</button>
+      <button onclick="turboSpinToggle()" id="turboBtn" class="btn-turbo">⚡ TURBO: OFF</button>
+    </div>
+  </div>
+
+  <p id="pesan"></p>
+
+  <div id="winner-popup" class="popup">
+    <div class="popup-content" id="winner-text">
+      🎉 SUPER WIN!!! 🎉<br>
+      <span id="win-amount">+Rp 0</span>
+    </div>
+    <canvas id="fireworks"></canvas>
+  </div>
+
+  <div class="coin-rain" id="coinRain"></div>
+
+  <div style="text-align:center; margin-top: 20px;">
+    <a href="{{ url_for('logout') }}">🚪 Logout</a>
+  </div>
+
+  <audio id="spinSound" src="{{ url_for('static', filename='sounds/spin.mp3') }}"></audio>
+  <audio id="winSound" src="{{ url_for('static', filename='sounds/win.mp3') }}"></audio>
+  <audio id="bgm" src="{{ url_for('static', filename='sounds/bgm.mp3') }}" autoplay loop></audio>
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
