@@ -20,7 +20,12 @@ if not os.path.exists(DATA_FILE):
 
 if not os.path.exists(PENGATURAN_FILE):
     with open(PENGATURAN_FILE, "w") as f:
-        json.dump({"modeOtomatis": True, "persentaseMenang": 20}, f)
+        json.dump({
+            "modeOtomatis": True,
+            "persentaseMenang": 20,
+            "minMenang": 50000,
+            "maxMenang": 100000
+        }, f)
 
 # === UTIL FILE ===
 def read_users():
@@ -138,9 +143,16 @@ def should_win():
     pengaturan = read_pengaturan()
     data = read_data()
     if data["menang"] >= TARGET_KEMENANGAN:
-        return jsonify({"bolehMenang": False})
+        return jsonify({"bolehMenang": False, "jumlahMenang": 0})
+
     chance = random.randint(1, 100)
-    return jsonify({"bolehMenang": chance <= pengaturan["persentaseMenang"]})
+    if chance <= pengaturan["persentaseMenang"]:
+        min_menang = pengaturan.get("minMenang", 50000)
+        max_menang = pengaturan.get("maxMenang", 100000)
+        jumlah = random.randint(min_menang, max_menang)
+        return jsonify({"bolehMenang": True, "jumlahMenang": jumlah})
+    else:
+        return jsonify({"bolehMenang": False, "jumlahMenang": 0})
 
 @app.route("/pengaturan", methods=["GET", "POST"])
 def pengaturan():
