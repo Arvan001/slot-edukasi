@@ -30,6 +30,12 @@ const bgm = document.getElementById("bgm");
 const saldoDisplay = document.getElementById("saldo");
 const winAmountDisplay = document.getElementById("win-amount");
 const winnerText = document.getElementById("winner-text");
+const popup = document.getElementById("winner-popup");
+const fwCanvas = document.getElementById("fireworks");
+const ctx = fwCanvas.getContext("2d");
+
+let particles = [];
+let intervalId;
 
 const simbol = ["🍒", "🍋", "🍊", "🔔", "⭐", "💎"];
 const simbolMenang = ["💎", "⭐", "🔔"];
@@ -152,6 +158,37 @@ async function putar() {
   }
 }
 
+function animateWinPopup(jumlah) {
+  const coinRain = document.getElementById("coinRain");
+  let current = 0;
+  let durasi = Math.min(3000, 1000 + jumlah / 100);
+  let langkah = Math.ceil(jumlah / (durasi / 30));
+
+  let judul = "🎉 WIN 🎉";
+  if (jumlah >= 1000000) judul = "🔥 SUPER WIN 🔥";
+  else if (jumlah >= 500000) judul = "💥 MEGA WIN 💥";
+  else if (jumlah >= 100000) judul = "✨ BIG WIN ✨";
+
+  startFireworks(); // Mulai kembang api lebih dulu (di belakang)
+  popup.style.display = "flex";
+  winnerText.innerHTML = `<div class='bounce-text'>${judul}</div><br><span id='win-amount'>+Rp 0</span>`;
+
+  startCoinRain();
+  const counter = setInterval(() => {
+    current += langkah;
+    if (current >= jumlah) {
+      current = jumlah;
+      clearInterval(counter);
+      setTimeout(() => {
+        popup.style.display = "none";
+        stopFireworks();
+        stopCoinRain();
+      }, 1000);
+    }
+    winAmountDisplay.innerText = "+" + formatRupiah(current);
+  }, 30);
+}
+
 function kirimLog(status, jumlah) {
   fetch("/log", {
     method: "POST",
@@ -166,39 +203,6 @@ function updateSaldoServer() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ saldo })
   }).catch(e => console.error("Gagal update saldo:", e));
-}
-
-function animateWinPopup(jumlah) {
-  const popup = document.getElementById("winner-popup");
-  const coinRain = document.getElementById("coinRain");
-  let current = 0;
-  let durasi = Math.min(3000, 1000 + jumlah / 100); // makin besar makin lama
-  let langkah = Math.ceil(jumlah / (durasi / 30));
-
-  let judul = "🎉 WIN 🎉";
-  if (jumlah >= 1000000) judul = "🔥 SUPER WIN 🔥";
-  else if (jumlah >= 500000) judul = "💥 MEGA WIN 💥";
-  else if (jumlah >= 100000) judul = "✨ BIG WIN ✨";
-
-  winnerText.innerHTML = `<div class="bounce-text">${judul}</div><br><span id="win-amount">+Rp 0</span>`;
-
-  popup.style.display = "flex";
-  startFireworks();
-  startCoinRain();
-
-  const counter = setInterval(() => {
-    current += langkah;
-    if (current >= jumlah) {
-      current = jumlah;
-      clearInterval(counter);
-      setTimeout(() => {
-        popup.style.display = "none";
-        stopFireworks();
-        stopCoinRain();
-      }, 1000); // tahan sebentar
-    }
-    winAmountDisplay.innerText = "+" + formatRupiah(current);
-  }, 30);
 }
 
 function autoSpinToggle() {
@@ -231,11 +235,6 @@ function stopCoinRain() {
   container.innerHTML = "";
   container.style.display = "none";
 }
-
-let fwCanvas = document.getElementById("fireworks");
-let ctx = fwCanvas.getContext("2d");
-let particles = [];
-let intervalId;
 
 function resizeCanvas() {
   fwCanvas.width = window.innerWidth;
