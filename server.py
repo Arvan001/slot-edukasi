@@ -146,7 +146,7 @@ def should_win():
         return jsonify({"bolehMenang": False, "jumlahMenang": 0})
 
     chance = random.randint(1, 100)
-    if chance <= pengaturan["persentaseMenang"]:
+    if chance <= pengaturan.get("persentaseMenang", 20):
         min_menang = pengaturan.get("minMenang", 50000)
         max_menang = pengaturan.get("maxMenang", 100000)
         jumlah = random.randint(min_menang, max_menang)
@@ -159,7 +159,15 @@ def pengaturan():
     if request.method == "GET":
         return jsonify(read_pengaturan())
     else:
-        write_pengaturan(request.json)
+        data = request.json
+        pengaturan = read_pengaturan()
+        pengaturan.update({
+            "modeOtomatis": data.get("modeOtomatis", pengaturan.get("modeOtomatis")),
+            "persentaseMenang": data.get("persentaseMenang", pengaturan.get("persentaseMenang")),
+            "minMenang": data.get("minMenang", pengaturan.get("minMenang")),
+            "maxMenang": data.get("maxMenang", pengaturan.get("maxMenang"))
+        })
+        write_pengaturan(pengaturan)
         return jsonify({"success": True})
 
 # === RUN ===
