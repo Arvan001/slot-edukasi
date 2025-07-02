@@ -1,9 +1,5 @@
-// === Pengaturan Admin ===
 let pengaturan = {
-  kemenanganSpin: {
-    2: 100000,
-    4: 100000
-  },
+  kemenanganSpin: { 2: 100000, 4: 100000 },
   modeOtomatis: true,
   persentaseMenang: 20,
   minMenang: 50000,
@@ -19,6 +15,9 @@ let isSpinning = false;
 let autoSpinTarget = 0;
 let autoSpinCounter = 0;
 
+const simbol = ["🍒", "🍋", "🍊", "🔔", "⭐", "💎"];
+const simbolMenang = ["💎", "⭐", "🔔"];
+
 const reels = [
   document.querySelector("#r1 .reel-items"),
   document.querySelector("#r2 .reel-items"),
@@ -28,12 +27,11 @@ const reels = [
 const spinBtn = document.querySelector(".btn-spin");
 const spinSound = document.getElementById("spinSound");
 const winSound = document.getElementById("winSound");
+const bgm = document.getElementById("bgm");
 const saldoDisplay = document.getElementById("saldo");
-const winPopup = document.getElementById("winner-popup");
+const autoSpinInput = document.getElementById("autoSpinCount");
+const popup = document.getElementById("winner-popup");
 const winAmount = document.getElementById("win-amount");
-
-const simbol = ["🍒", "🍋", "🍊", "🔔", "⭐", "💎"];
-const simbolMenang = ["💎", "⭐", "🔔"];
 
 function formatRupiah(nilai) {
   return 'Rp ' + nilai.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
@@ -46,29 +44,30 @@ function tampilkanSaldo() {
 function playSound(sound) {
   sound.pause();
   sound.currentTime = 0;
-  sound.play();
+  sound.play().catch(() => {});
 }
 
 function spinReel(reel, hasil, delay) {
   return new Promise(resolve => {
-    const tinggiSimbol = 50;
-    const simbolList = [];
+    const total = 30;
+    const tinggiSimbol = 60;
+    const posisiTengah = (total + 1) * tinggiSimbol;
 
-    for (let i = 0; i < 10; i++) {
-      simbolList.push(`<div>${simbol[Math.floor(Math.random() * simbol.length)]}</div>`);
+    let isi = "";
+
+    for (let i = 0; i < total; i++) {
+      isi += `<div>${simbol[Math.floor(Math.random() * simbol.length)]}</div>`;
     }
 
-    simbolList.push(`<div>${simbol[Math.floor(Math.random() * simbol.length)]}</div>`); // atas
-    simbolList.push(`<div class='winning'>${hasil}</div>`); // tengah
-    simbolList.push(`<div>${simbol[Math.floor(Math.random() * simbol.length)]}</div>`); // bawah
+    isi += `<div>${simbol[Math.floor(Math.random() * simbol.length)]}</div>`; // atas
+    isi += `<div>${hasil}</div>`; // tengah
+    isi += `<div>${simbol[Math.floor(Math.random() * simbol.length)]}</div>`; // bawah
 
-    reel.innerHTML = simbolList.join("");
-
+    reel.innerHTML = isi;
     reel.style.transition = "none";
     reel.style.transform = `translateY(0px)`;
 
     setTimeout(() => {
-      const posisiTengah = (simbolList.length - 2) * tinggiSimbol;
       reel.style.transition = `transform ${1 + delay}s ease-out`;
       reel.style.transform = `translateY(-${posisiTengah}px)`;
       setTimeout(resolve, (1 + delay) * 1000);
@@ -77,19 +76,21 @@ function spinReel(reel, hasil, delay) {
 }
 
 function showWinnerPopup(jumlah) {
-  winAmount.innerText = `+${formatRupiah(jumlah)}`;
-  winPopup.classList.remove("hidden");
-  winPopup.classList.add("show");
+  winAmount.innerText = "+ " + formatRupiah(jumlah);
+  popup.classList.remove("hidden");
+  popup.classList.add("show");
   playSound(winSound);
+  confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
 }
 
 function closeWinnerPopup() {
-  winPopup.classList.add("hidden");
-  winPopup.classList.remove("show");
+  popup.classList.add("hidden");
+  popup.classList.remove("show");
 }
 
 async function putar() {
   if (isSpinning) return;
+
   const taruhan = parseInt(document.getElementById("taruhan").value);
   if (taruhan > saldo || taruhan <= 0) {
     document.getElementById("pesan").innerText = "Taruhan tidak valid!";
@@ -98,30 +99,37 @@ async function putar() {
 
   isSpinning = true;
   spinBtn.disabled = true;
-  spinBtn.style.opacity = 0.4;
-
+  spinBtn.style.opacity = 0.5;
   spinKe++;
   saldo -= taruhan;
   tampilkanSaldo();
+  updateSaldoServer();
   document.getElementById("pesan").innerText = "";
   playSound(spinSound);
 
-  let hasil = [null, null, null];
+  let hasil = [];
   let menang = 0;
-  let simbolMenangFinal = simbolMenang[Math.floor(Math.random() * simbolMenang.length)];
+  let simbolFinal = simbolMenang[Math.floor(Math.random() * simbolMenang.length)];
   let bolehMenang = false;
   let jumlahMenang = 0;
 
   if (pengaturan.modeOtomatis) {
-    bolehMenang = Math.random() * 100 < pengaturan.persentaseMenang;
-    jumlahMenang = Math.floor(pengaturan.minMenang + Math.random() * (pengaturan.maxMenang - pengaturan.minMenang));
+    try {
+      const res = await fetch("/should_win");
+      const data = await res.json();
+      bolehMenang = data.bolehMenang;
+      jumlahMenang = parseInt(data.jumlahMenang) || 0;
+    } catch {
+      bolehMenang = Math.random() * 100 < pengaturan.persentaseMenang;
+      jumlahMenang = Math.floor(pengaturan.minMenang + Math.random() * (pengaturan.maxMenang - pengaturan.minMenang));
+    }
   } else {
     bolehMenang = pengaturan.kemenanganSpin.hasOwnProperty(spinKe);
     jumlahMenang = pengaturan.kemenanganSpin[spinKe] || taruhan * 5;
   }
 
   if (bolehMenang && jumlahMenang > 0) {
-    hasil = [simbolMenangFinal, simbolMenangFinal, simbolMenangFinal];
+    hasil = [simbolFinal, simbolFinal, simbolFinal];
     menang = jumlahMenang;
   } else {
     hasil = Array.from({ length: 3 }, () => simbol[Math.floor(Math.random() * simbol.length)]);
@@ -137,17 +145,74 @@ async function putar() {
   if (menang > 0) {
     saldo += menang;
     tampilkanSaldo();
+    updateSaldoServer();
     showWinnerPopup(menang);
+    kirimLog("MENANG", menang);
   } else {
-    document.getElementById("pesan").innerText = `😢 Kalah!`;
+    document.getElementById("pesan").innerText = "😢 Kalah!";
+    kirimLog("KALAH", taruhan);
   }
 
   isSpinning = false;
   spinBtn.disabled = false;
   spinBtn.style.opacity = 1;
+
+  if (autoSpin && (autoSpinTarget === 0 || autoSpinCounter < autoSpinTarget)) {
+    autoSpinCounter++;
+    autoSpinInterval = setTimeout(() => {
+      putar();
+    }, turboSpin ? 200 : 1000);
+  } else if (autoSpinTarget > 0 && autoSpinCounter >= autoSpinTarget) {
+    autoSpinToggle();
+  }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  saldo = 500000; // saldo awal dummy
-  tampilkanSaldo();
+function autoSpinToggle() {
+  autoSpin = !autoSpin;
+  autoSpinCounter = 0;
+  autoSpinTarget = parseInt(autoSpinInput.value) || 0;
+  document.getElementById("autoBtn").textContent = autoSpin ? "🔁 AUTO: ON" : "🔁 AUTO: OFF";
+  if (autoSpin) putar();
+  else clearTimeout(autoSpinInterval);
+}
+
+function turboSpinToggle() {
+  turboSpin = !turboSpin;
+  document.getElementById("turboBtn").textContent = turboSpin ? "⚡ TURBO: ON" : "⚡ TURBO: OFF";
+}
+
+function updateSaldoServer() {
+  fetch("/api/update_saldo", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ saldo })
+  }).catch(() => {});
+}
+
+function kirimLog(status, jumlah) {
+  fetch("/log", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status, jumlah })
+  }).catch(() => {});
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  fetch("/api/saldo")
+    .then(res => res.json())
+    .then(data => {
+      saldo = data.saldo || 0;
+      tampilkanSaldo();
+    });
+
+  fetch("/pengaturan")
+    .then(res => res.json())
+    .then(data => {
+      pengaturan = { ...pengaturan, ...data };
+    });
+
+  document.body.addEventListener("click", () => {
+    bgm.volume = 0.3;
+    bgm.play().catch(() => {});
+  }, { once: true });
 });
