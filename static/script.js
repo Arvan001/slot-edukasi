@@ -56,23 +56,33 @@ function spinReel(reel, hasil, delay) {
     const tinggiSimbol = 50;
     const simbolAcak = [];
 
+    // Tambah simbol acak
     for (let i = 0; i < simbolCount; i++) {
       simbolAcak.push(simbol[Math.floor(Math.random() * simbol.length)]);
     }
 
-    simbolAcak.push(simbol[Math.floor(Math.random() * simbol.length)]); // atas
-    simbolAcak.push(hasil); // tengah
-    simbolAcak.push(simbol[Math.floor(Math.random() * simbol.length)]); // bawah
+    // Tambah 3 simbol akhir untuk tampil atas, tengah, bawah
+    const atas = simbol[Math.floor(Math.random() * simbol.length)];
+    const bawah = simbol[Math.floor(Math.random() * simbol.length)];
+    simbolAcak.push(atas);
+    simbolAcak.push(hasil);  // posisi tengah
+    simbolAcak.push(bawah);
 
+    // Render
     reel.innerHTML = simbolAcak.map((sim, i) => {
-      return `<div>${sim}</div>`;
+      if (i === simbolCount + 1) {
+        return `<div class="tengah-menang">${sim}</div>`;  // tengah (yang menang)
+      } else {
+        return `<div>${sim}</div>`;
+      }
     }).join("");
 
+    // Reset posisi
     reel.style.transition = "none";
     reel.style.transform = `translateY(0px)`;
 
     setTimeout(() => {
-      const posisiTengah = (simbolCount + 1) * tinggiSimbol;
+      const posisiTengah = (simbolCount + 1) * tinggiSimbol;  // simbolCount+1 = posisi simbol menang
       reel.style.transition = `transform ${1 + delay}s ease-out`;
       reel.style.transform = `translateY(-${posisiTengah}px)`;
       setTimeout(resolve, (1 + delay) * 1000);
@@ -80,7 +90,7 @@ function spinReel(reel, hasil, delay) {
   });
 }
 
-function animateWinPopup(jumlah) {
+function showWinnerPopup(menang); {
   let judul = "🎉 WIN 🎉";
   if (jumlah >= 1_000_000) judul = "🔥 SUPER WIN 🔥";
   else if (jumlah >= 500_000) judul = "💥 MEGA WIN 💥";
