@@ -51,6 +51,12 @@ h1 {
   box-shadow: 0 0 10px #0ff;
 }
 
+.reel-items {
+  display: flex;
+  flex-direction: column;
+  transition: transform 1s ease-out;
+}
+
 .reel-items > div {
   height: 50px;
   font-size: 2rem;
@@ -180,35 +186,6 @@ canvas#fireworks {
   font-size: 1rem;
 }
 
-/* Responsive untuk mobile */
-@media screen and (max-width: 600px) {
-  .slot-frame {
-    width: 95%;
-    padding: 15px;
-  }
-  .reel {
-    width: 60px;
-    height: 150px;
-  }
-  .reel-items > div {
-    font-size: 1.5rem;
-  }
-  .popup-content {
-    font-size: 1.5rem;
-  }
-  input[type="number"] {
-    width: 100px;
-    font-size: 1rem;
-  }
-  button {
-    font-size: 0.9rem;
-    padding: 8px 10px;
-  }
-  h1 {
-    font-size: 1.3rem;
-  }
-}
-
 /* Login & Register Form */
 .login-container {
   background: #111;
@@ -249,52 +226,7 @@ canvas#fireworks {
   margin-top: 15px;
 }
 
-.reel-items {
-  display: flex;
-  flex-direction: column;
-  transition: transform 1s ease-out;
-}
-
-.reel-items > div {
-  height: 50px;
-  font-size: 2rem;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.bounce-text {
-  animation: bounceText 1s infinite alternate;
-}
-
-@keyframes bounceText {
-  from {
-    transform: translateX(-5px);
-  }
-  to {
-    transform: translateX(5px);
-  }
-}
-
-.bounce-text {
-  animation: bounceText 1s infinite alternate;
-}
-
-@keyframes bounceText {
-  from { transform: translateX(-5px); }
-  to { transform: translateX(5px); }
-}
-
-@keyframes popFade {
-  0% { opacity: 0; transform: scale(0.5); }
-  100% { opacity: 1; transform: scale(1); }
-}
-
-@keyframes zoomIn {
-  0% { transform: scale(0.8); }
-  100% { transform: scale(1); }
-}
-
+/* Popup Kemenangan */
 #winner-popup {
   display: none;
   position: fixed;
@@ -306,7 +238,7 @@ canvas#fireworks {
   z-index: 9999;
 }
 
-.popup-content {
+#winner-popup .popup-content {
   background: linear-gradient(to right, #ffcc00, #ff9900);
   border: 5px solid gold;
   padding: 40px;
@@ -314,6 +246,8 @@ canvas#fireworks {
   box-shadow: 0 0 30px gold;
   text-align: center;
   animation: popIn 0.6s ease, pulse 1s infinite;
+  max-width: 90vw;
+  width: 100%;
 }
 
 .win-title {
@@ -330,6 +264,7 @@ canvas#fireworks {
   text-shadow: 0 0 8px #333;
 }
 
+/* Animasi */
 @keyframes popIn {
   0% { transform: scale(0.3); opacity: 0; }
   60% { transform: scale(1.1); opacity: 1; }
@@ -368,4 +303,53 @@ canvas#fireworks {
 
 .popup.show {
   display: flex;
+}
+
+/* Responsive untuk mobile */
+@media screen and (max-width: 600px) {
+  .slot-frame {
+    width: 95%;
+    padding: 15px;
+  }
+
+  .reel {
+    width: 60px;
+    height: 150px;
+  }
+
+  .reel-items > div {
+    font-size: 1.5rem;
+  }
+
+  .popup-content {
+    font-size: 1.5rem;
+  }
+
+  input[type="number"] {
+    width: 100px;
+    font-size: 1rem;
+  }
+
+  button {
+    font-size: 0.9rem;
+    padding: 8px 10px;
+  }
+
+  h1 {
+    font-size: 1.3rem;
+  }
+
+  #winner-popup .popup-content {
+    padding: 20px;
+    border-width: 3px;
+    border-radius: 15px;
+  }
+
+  .win-title {
+    font-size: 2rem;
+  }
+
+  .win-amount {
+    font-size: 1.5rem;
+  }
 }
