@@ -7,9 +7,13 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'rahasia_kuat_dan_lebih_aman')  # Change this in production
-app.config['SESSION_COOKIE_SECURE'] = True  # Only send cookies over HTTPS
-app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour session lifetime
+app.secret_key = os.environ.get('SECRET_KEY', 'rahasia_kuat_dan_aman')
+app.config.update(
+    SESSION_COOKIE_SECURE=True,
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    PERMANENT_SESSION_LIFETIME=3600  # 1 hour session
+)
 
 # Constants
 TARGET_KEMENANGAN = 5000000
@@ -30,21 +34,23 @@ PENGATURAN_FILE = os.path.join(DATA_DIR, "pengaturan.json")
 
 # === Helper Functions ===
 def init_files():
-    """Initialize data files with default content"""
-    if not os.path.exists(USERS_FILE):
-        with open(USERS_FILE, "w") as f:
-            json.dump({}, f)
-
-    if not os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "w") as f:
-            f.write("menang=0\nkalah=0\n")
-
-    if not os.path.exists(PENGATURAN_FILE):
-        with open(PENGATURAN_FILE, "w") as f:
-            json.dump(DEFAULT_PENGATURAN, f)
+    """Initialize required data files"""
+    defaults = [
+        (USERS_FILE, {}),
+        (DATA_FILE, "menang=0\nkalah=0\n"),
+        (PENGATURAN_FILE, DEFAULT_PENGATURAN)
+    ]
+    
+    for file_path, default in defaults:
+        if not os.path.exists(file_path):
+            with open(file_path, "w") as f:
+                if isinstance(default, dict):
+                    json.dump(default, f)
+                else:
+                    f.write(default)
 
 def read_users():
-    """Read users data with error handling"""
+    """Read users data safely"""
     try:
         with open(USERS_FILE, "r") as f:
             return json.load(f)
@@ -63,7 +69,8 @@ def read_data():
     try:
         with open(DATA_FILE, "r") as f:
             lines = f.readlines()
-        return {k: int(v) for line in lines if "=" in line for k, v in [line.strip().split("=")]}
+        return {k: int(v) for line in lines if "=" in line 
+                for k, v in [line.strip().split("=")]}
     except (FileNotFoundError, ValueError):
         return {"menang": 0, "kalah": 0}
 
@@ -102,8 +109,14 @@ def login_required(f):
 # Initialize data files
 init_files()
 
+# === Error Handlers ===
+@app.errorhandler(405)
+def method_not_allowed(e):
+    return render_template('405.html'), 405
+
 # === Authentication Routes ===
 @app.route("/", methods=["GET", "POST"])
+@app.route("/login", methods=["GET", "POST"])
 def login():
     if "username" in session:
         return redirect(url_for("game"))
@@ -113,7 +126,7 @@ def login():
         password = request.form.get("password", "")
 
         if not username or not password:
-            return render_template("login.html", error="Username dan password harus diisi")
+            return render_template("login.html", error="Harap isi semua field")
 
         users = read_users()
         if username not in users or not check_password_hash(users[username]["password"], password):
@@ -132,10 +145,10 @@ def register():
         confirm_password = request.form.get("confirm_password", "")
 
         if not username or not password:
-            return render_template("register.html", error="Username dan password harus diisi")
+            return render_template("register.html", error="Harap isi semua field")
 
         if password != confirm_password:
-            return render_template("register.html", error="Konfirmasi password tidak cocok")
+            return render_template("register.html", error="Password tidak cocok")
 
         users = read_users()
         if username in users:
@@ -179,10 +192,9 @@ def pengaturan():
         new_settings = request.get_json()
         current_settings = read_pengaturan()
         
-        # Validate and update settings
         validated_settings = {
             "modeOtomatis": bool(new_settings.get("modeOtomatis", current_settings["modeOtomatis"])),
-            "persentaseMenang": max(0, min(100, int(new_settings.get("persentaseMenang", current_settings["persentaseMenang"]))),
+            "persentaseMenang": max(0, min(100, int(new_settings.get("persentaseMenang", current_settings["persentaseMenang"])))),
             "minMenang": max(0, int(new_settings.get("minMenang", current_settings["minMenang"]))),
             "maxMenang": max(0, int(new_settings.get("maxMenang", current_settings["maxMenang"])))
         }
@@ -192,7 +204,7 @@ def pengaturan():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 400
 
-@app.route("/api/should_win")
+@app.route("/api/should_win", methods=["GET"])
 @login_required
 def should_win():
     pengaturan = read_pengaturan()
@@ -231,7 +243,7 @@ def log_spin():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 400
 
-@app.route("/api/status")
+@app.route("/api/status", methods=["GET"])
 @login_required
 def status():
     data = read_data()
@@ -245,7 +257,7 @@ def status():
         "targetTercapai": data["menang"] >= TARGET_KEMENANGAN
     })
 
-@app.route("/api/saldo")
+@app.route("/api/saldo", methods=["GET"])
 @login_required
 def api_saldo():
     users = read_users()
@@ -269,12 +281,6 @@ def update_saldo():
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 400
-
-# Debug route (remove in production)
-@app.route("/debug/users")
-def debug_users():
-    users = read_users()
-    return jsonify(users)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
