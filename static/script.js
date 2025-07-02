@@ -15,8 +15,8 @@ let isSpinning = false;
 let autoSpinTarget = 0;
 let autoSpinCounter = 0;
 
-const simbol = ["🍒", "🍋", "🍊", "🔔", "⭐", "💎"];
-const simbolMenang = ["💎", "⭐", "🔔"];
+const simbol = ["🍒", "🍋", "🍊", "🔔", "⭐", "💎", "🗿", "🍎"];
+const simbolMenang = ["💎", "⭐", "🔔", "🗿", "🍎", "🍊", "🍒", "🍋"];
 
 const reels = [
   document.querySelector("#r1 .reel-items"),
