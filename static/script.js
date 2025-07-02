@@ -16,6 +16,8 @@ let autoSpin = false;
 let turboSpin = false;
 let autoSpinInterval;
 let isSpinning = false;
+let autoSpinTarget = 0;
+let autoSpinCounter = 0;
 
 const reels = [
   document.querySelector("#r1 .reel-items"),
@@ -30,6 +32,7 @@ const bgm = document.getElementById("bgm");
 const saldoDisplay = document.getElementById("saldo");
 const winnerText = document.getElementById("winner-text");
 const popup = document.getElementById("winner-popup");
+const autoSpinInput = document.getElementById("autoSpinCount");
 
 const simbol = ["🍒", "🍋", "🍊", "🔔", "⭐", "💎"];
 const simbolMenang = ["💎", "⭐", "🔔"];
@@ -107,8 +110,10 @@ async function putar() {
         jumlahMenang = parseInt(data.jumlahMenang) || 0;
       })
       .catch(() => {
-        bolehMenang = true;
-        jumlahMenang = 50000;
+        bolehMenang = Math.random() * 100 < pengaturan.persentaseMenang;
+        jumlahMenang = Math.floor(
+          pengaturan.minMenang + Math.random() * (pengaturan.maxMenang - pengaturan.minMenang)
+        );
       });
   } else {
     bolehMenang = pengaturan.kemenanganSpin.hasOwnProperty(spinKe);
@@ -145,10 +150,13 @@ async function putar() {
   spinBtn.disabled = false;
   spinBtn.style.opacity = 1;
 
-  if (autoSpin) {
+  if (autoSpin && (autoSpinTarget === 0 || autoSpinCounter < autoSpinTarget)) {
+    autoSpinCounter++;
     autoSpinInterval = setTimeout(() => {
       putar();
     }, turboSpin ? 100 : 1000);
+  } else if (autoSpinTarget > 0 && autoSpinCounter >= autoSpinTarget) {
+    autoSpinToggle();
   }
 }
 
@@ -200,6 +208,8 @@ function updateSaldoServer() {
 
 function autoSpinToggle() {
   autoSpin = !autoSpin;
+  autoSpinCounter = 0;
+  autoSpinTarget = parseInt(autoSpinInput.value) || 0;
   document.getElementById("autoBtn").textContent = autoSpin ? "🔁 AUTO: ON" : "🔁 AUTO: OFF";
   if (autoSpin) putar();
   else clearTimeout(autoSpinInterval);
