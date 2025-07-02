@@ -77,6 +77,32 @@ function spinReel(reel, hasil, delay) {
   });
 }
 
+function showWinnerPopup(amount) {
+  const popup = document.getElementById("winner-popup");
+  const winAmount = document.getElementById("win-amount");
+  const winSound = document.getElementById("winSound");
+
+  winAmount.textContent = `+Rp ${amount.toLocaleString('id-ID')}`;
+  popup.classList.remove("hidden");
+  popup.classList.add("show");
+
+  winSound.play();
+
+  // Konfeti efek
+  confetti({
+    particleCount: 200,
+    spread: 100,
+    origin: { y: 0.6 }
+  });
+}
+
+function closeWinnerPopup() {
+  const popup = document.getElementById("winner-popup");
+  popup.classList.remove("show");
+  popup.classList.add("hidden");
+}
+
+
 async function putar() {
   if (isSpinning) return;
   const taruhan = parseInt(document.getElementById("taruhan").value);
