@@ -2,7 +2,7 @@ import os
 import json
 import random
 from datetime import datetime
-from flask import Flask, request, jsonify, session, render_template, redirect
+from flask import Flask, request, jsonify, session, render_template, redirect, url_for
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 
@@ -87,11 +87,16 @@ init_files()
 @app.route('/')
 def index():
     if 'username' in session:
-        return redirect('/game')
+        return redirect(url_for('game'))
     return render_template('login.html')
 
-@app.route('/login', methods=['POST'])
+@app.route('/login', methods=['GET', 'POST'])
 def login():
+    if request.method == 'GET':
+        if 'username' in session:
+            return redirect(url_for('game'))
+        return render_template('login.html')
+    
     users = load_data(USERS_FILE, {})
     username = request.form.get('username', '').strip()
     password = request.form.get('password', '')
@@ -104,7 +109,7 @@ def login():
 
     session.permanent = True
     session['username'] = username
-    return redirect('/game')
+    return redirect(url_for('game'))
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -133,14 +138,19 @@ def register():
         'last_update': datetime.now().isoformat()
     }
     save_data(USERS_FILE, users)
-    return redirect('/')
+    return redirect(url_for('login'))
 
 @app.route('/logout')
 def logout():
     session.clear()
-    return redirect('/')
+    return redirect(url_for('index'))
 
-### Game API ###
+@app.route('/game')
+@login_required
+def game():
+    return render_template('game.html')  # You'll need to create this template
+
+### API Routes ###
 @app.route('/api/user', methods=['GET', 'POST'])
 @login_required
 def user_data():
