@@ -30,8 +30,6 @@ const spinSound = document.getElementById("spinSound");
 const winSound = document.getElementById("winSound");
 const bgm = document.getElementById("bgm");
 const saldoDisplay = document.getElementById("saldo");
-const winnerText = document.getElementById("winner-text");
-const popup = document.getElementById("winner-popup");
 const autoSpinInput = document.getElementById("autoSpinCount");
 
 const simbol = ["🍒", "🍋", "🍊", "🔔", "⭐", "💎"];
@@ -51,27 +49,33 @@ function playSound(sound) {
   sound.play();
 }
 
-function spinReel(reel, hasil, delay) {
+function spinReel(reel, hasilTengah, delay) {
   return new Promise(resolve => {
-    const totalSimbol = 30;
+    const totalSimbol = 20;
     const tinggiSimbol = 50;
-    const offsetTengah = 50;
+    const hasilIndex = totalSimbol - 2; // posisi tengah (baris ke-18 dari 20)
 
-    let items = "";
+    let simbolAcak = [];
     for (let i = 0; i < totalSimbol; i++) {
-      const acak = simbol[Math.floor(Math.random() * simbol.length)];
-      items += `<div>${acak}</div>`;
+      simbolAcak.push(simbol[Math.floor(Math.random() * simbol.length)]);
     }
-    items += `<div>${hasil}</div>`;
-    reel.innerHTML = items;
+
+    simbolAcak[hasilIndex - 1] = simbol[Math.floor(Math.random() * simbol.length)];
+    simbolAcak[hasilIndex] = hasilTengah;
+    simbolAcak[hasilIndex + 1] = simbol[Math.floor(Math.random() * simbol.length)];
+
+    reel.innerHTML = simbolAcak.map((s, i) => {
+      const tengah = i === hasilIndex;
+      return `<div class="${tengah ? 'tengah-menang' : ''}">${s}</div>`;
+    }).join('');
 
     reel.style.transition = "none";
     reel.style.transform = "translateY(0px)";
 
     setTimeout(() => {
-      const totalScroll = totalSimbol * tinggiSimbol - offsetTengah;
+      const jarakScroll = (hasilIndex - 1) * tinggiSimbol;
       reel.style.transition = `transform ${1 + delay}s ease-out`;
-      reel.style.transform = `translateY(-${totalScroll}px)`;
+      reel.style.transform = `translateY(-${jarakScroll}px)`;
       setTimeout(resolve, (1 + delay) * 1000);
     }, 50);
   });
@@ -80,20 +84,11 @@ function spinReel(reel, hasil, delay) {
 function showWinnerPopup(amount) {
   const popup = document.getElementById("winner-popup");
   const winAmount = document.getElementById("win-amount");
-  const winSound = document.getElementById("winSound");
-
   winAmount.textContent = `+Rp ${amount.toLocaleString('id-ID')}`;
   popup.classList.remove("hidden");
   popup.classList.add("show");
-
   winSound.play();
-
-  // Konfeti efek
-  confetti({
-    particleCount: 200,
-    spread: 100,
-    origin: { y: 0.6 }
-  });
+  confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
 }
 
 function closeWinnerPopup() {
@@ -101,7 +96,6 @@ function closeWinnerPopup() {
   popup.classList.remove("show");
   popup.classList.add("hidden");
 }
-
 
 async function putar() {
   if (isSpinning) return;
@@ -165,7 +159,7 @@ async function putar() {
     saldo += menang;
     tampilkanSaldo();
     updateSaldoServer();
-    animateWinPopup(menang);
+    showWinnerPopup(menang);
     kirimLog("MENANG", menang);
   } else {
     document.getElementById("pesan").innerText = `😢 Kalah!`;
@@ -185,50 +179,6 @@ async function putar() {
     autoSpinToggle();
   }
 }
-
-function animateWinPopup(jumlah) {
-  const judulEl = document.getElementById("winner-text");
-  const popup = document.getElementById("winner-popup");
-  
-  let judul = "🎉 WIN 🎉";
-  if (jumlah >= 1_000_000) judul = "🔥 SUPER WIN 🔥";
-  else if (jumlah >= 500_000) judul = "💥 MEGA WIN 💥";
-  else if (jumlah >= 100_000) judul = "✨ BIG WIN ✨";
-
-  // Tambahkan class animasi & show popup
-  popup.innerHTML = `
-    <div class="popup-content animated">
-      <h1 class="win-title">${judul}</h1>
-      <p id="win-amount" class="win-amount">+Rp 0</p>
-      <canvas id="confetti-canvas"></canvas>
-    </div>
-  `;
-  popup.style.display = "flex";
-
-  // Hitung naik jumlah kemenangan
-  let current = 0;
-  let durasi = Math.min(3000, 1000 + jumlah / 100);
-  let langkah = Math.ceil(jumlah / (durasi / 30));
-  const counter = setInterval(() => {
-    current += langkah;
-    if (current >= jumlah) {
-      current = jumlah;
-      clearInterval(counter);
-      setTimeout(() => {
-        popup.style.display = "none";
-      }, 1500);
-    }
-    const el = document.getElementById("win-amount");
-    if (el) el.innerText = "+" + formatRupiah(current);
-  }, 30);
-
-  // Confetti animasi
-  if (window.confetti) {
-    const canvas = document.getElementById('confetti-canvas');
-    confetti.create(canvas, { resize: true })({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-  }
-}
-
 
 function kirimLog(status, jumlah) {
   fetch("/log", {
