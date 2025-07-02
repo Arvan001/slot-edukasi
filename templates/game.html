@@ -39,13 +39,21 @@
 
   <p id="pesan"></p>
 
-  <div id="winner-popup" class="popup">
-    <div class="popup-content" id="winner-text">
-      🎉 SUPER WIN!!! 🎉<br>
-      <span id="win-amount">+Rp 0</span>
-    </div>
-    <canvas id="fireworks"></canvas>
+<div id="winner-popup" class="popup hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+  <div class="relative bg-gradient-to-br from-yellow-400 to-orange-500 rounded-3xl shadow-2xl p-10 text-center animate-bounceIn ring-4 ring-yellow-300/50">
+    <div class="absolute inset-0 rounded-3xl bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.2)_0%,_transparent_70%)] animate-shine pointer-events-none"></div>
+    
+    <h2 class="text-5xl font-extrabold text-white drop-shadow mb-4" id="winTitle">🎉 SUPER WIN!!! 🎉</h2>
+    <p class="text-4xl font-bold text-white" id="win-amount">+Rp 0</p>
+    
+    <button onclick="closeWinnerPopup()" class="mt-6 bg-white text-yellow-800 font-bold px-6 py-3 rounded-full text-lg hover:scale-105 transition shadow-lg">
+      Lanjutkan
+    </button>
+    
+    <canvas id="fireworks" class="absolute top-0 left-0 w-full h-full pointer-events-none"></canvas>
   </div>
+</div>
+
 
   <div class="coin-rain" id="coinRain"></div>
 
