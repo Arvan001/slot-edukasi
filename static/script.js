@@ -49,41 +49,38 @@ function playSound(sound) {
 
 function spinReel(reel, hasil, delay) {
   return new Promise(resolve => {
-    const visibleCount = 3; // Jumlah simbol yang terlihat (atas, tengah, bawah)
-    const simbolCount = 30; // Simbol acak sebelum hasil
-    const tinggiSimbol = 50;
-
-    // Buat simbol acak
+    const tinggiSimbol = 50; // HARUS sama dengan tinggi 1 simbol di CSS
+    const simbolCount = 30; // jumlah simbol acak untuk animasi
     const simbolAcak = [];
+
+    // Buat simbol acak sebelum hasil
     for (let i = 0; i < simbolCount; i++) {
       simbolAcak.push(simbol[Math.floor(Math.random() * simbol.length)]);
     }
 
-    // Sisipkan simbol agar hasil ada di tengah
-    const simbolFinal = [
-      ...simbolAcak,
-      simbol[Math.floor(Math.random() * simbol.length)], // Atas
-      hasil, // Tengah
-      simbol[Math.floor(Math.random() * simbol.length)]  // Bawah
-    ];
+    // Susun final: acak + [atas, hasil (tengah), bawah]
+    const atas = simbol[Math.floor(Math.random() * simbol.length)];
+    const bawah = simbol[Math.floor(Math.random() * simbol.length)];
+    const semuaSimbol = [...simbolAcak, atas, hasil, bawah];
 
-    // Update HTML
-    reel.innerHTML = simbolFinal.map(sim => `<div>${sim}</div>`).join("");
+    // Tampilkan semua simbol
+    reel.innerHTML = semuaSimbol.map(sim => `<div>${sim}</div>`).join("");
 
-    // Reset posisi
+    // Reset posisi reel
     reel.style.transition = "none";
-    reel.style.transform = `translateY(0px)`;
+    reel.style.transform = "translateY(0px)";
 
     setTimeout(() => {
-      const posisiTengah = (simbolCount + 1) * tinggiSimbol;
+      const posisiHasil = simbolAcak.length + 1; // index simbol hasil di tengah
+      const offset = (posisiHasil - 1) * tinggiSimbol; // geser sehingga hasil di tengah
       reel.style.transition = `transform ${1 + delay}s ease-out`;
-      reel.style.transform = `translateY(-${posisiTengah}px)`;
+      reel.style.transform = `translateY(-${offset}px)`;
 
-      // Tunggu animasi selesai
       setTimeout(resolve, (1 + delay) * 1000);
     }, 50);
   });
 }
+
 
 function showWinnerPopup(jumlah) {
   winAmount.innerText = "+ " + formatRupiah(jumlah);
