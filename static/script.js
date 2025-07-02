@@ -54,7 +54,6 @@ function spinReel(reel, hasil, delay) {
   return new Promise(resolve => {
     const simbolCount = 30;
     const tinggiSimbol = 50;
-    const totalSimbol = simbolCount + 3;
     const simbolAcak = [];
 
     for (let i = 0; i < simbolCount; i++) {
@@ -66,11 +65,7 @@ function spinReel(reel, hasil, delay) {
     simbolAcak.push(simbol[Math.floor(Math.random() * simbol.length)]); // bawah
 
     reel.innerHTML = simbolAcak.map((sim, i) => {
-      if (i === simbolCount + 1) {
-        return `<div class="tengah-menang">${sim}</div>`;
-      } else {
-        return `<div>${sim}</div>`;
-      }
+      return `<div>${sim}</div>`;
     }).join("");
 
     reel.style.transition = "none";
