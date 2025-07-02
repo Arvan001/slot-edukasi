@@ -49,33 +49,39 @@ function playSound(sound) {
   sound.play();
 }
 
-function spinReel(reel, hasilTengah, delay) {
+function spinReel(reel, hasil, delay) {
   return new Promise(resolve => {
-    const totalSimbol = 20;
+    const simbolCount = 30;
     const tinggiSimbol = 50;
-    const hasilIndex = totalSimbol - 2; // posisi tengah (baris ke-18 dari 20)
+    const totalSimbol = simbolCount + 3; // Tambah 3 agar bisa tampil atas, tengah, bawah
+    const simbolAcak = [];
 
-    let simbolAcak = [];
-    for (let i = 0; i < totalSimbol; i++) {
+    // Buat simbol acak
+    for (let i = 0; i < simbolCount; i++) {
       simbolAcak.push(simbol[Math.floor(Math.random() * simbol.length)]);
     }
 
-    simbolAcak[hasilIndex - 1] = simbol[Math.floor(Math.random() * simbol.length)];
-    simbolAcak[hasilIndex] = hasilTengah;
-    simbolAcak[hasilIndex + 1] = simbol[Math.floor(Math.random() * simbol.length)];
+    // Sisipkan simbol pemenang di tengah
+    simbolAcak.push(simbol[Math.floor(Math.random() * simbol.length)]); // atas
+    simbolAcak.push(hasil); // tengah (yang menang)
+    simbolAcak.push(simbol[Math.floor(Math.random() * simbol.length)]); // bawah
 
-    reel.innerHTML = simbolAcak.map((s, i) => {
-      const tengah = i === hasilIndex;
-      return `<div class="${tengah ? 'tengah-menang' : ''}">${s}</div>`;
-    }).join('');
+    // Tampilkan simbol
+    reel.innerHTML = simbolAcak.map((sim, i) => {
+      if (i === simbolCount + 1) {
+        return `<div class="tengah-menang">${sim}</div>`;
+      } else {
+        return `<div>${sim}</div>`;
+      }
+    }).join("");
 
     reel.style.transition = "none";
-    reel.style.transform = "translateY(0px)";
+    reel.style.transform = `translateY(0px)`;
 
     setTimeout(() => {
-      const jarakScroll = (hasilIndex - 1) * tinggiSimbol;
+      const posisiTengah = (simbolCount + 1) * tinggiSimbol; // Geser sampai simbol menang di tengah
       reel.style.transition = `transform ${1 + delay}s ease-out`;
-      reel.style.transform = `translateY(-${jarakScroll}px)`;
+      reel.style.transform = `translateY(-${posisiTengah}px)`;
       setTimeout(resolve, (1 + delay) * 1000);
     }, 50);
   });
