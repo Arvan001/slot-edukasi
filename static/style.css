@@ -353,3 +353,36 @@ canvas#fireworks {
     font-size: 1.5rem;
   }
 }
+
+/* Reel kini berisi 3 simbol, dan simbol tengah akan di-highlight */
+.reel-items {
+  display: flex;
+  flex-direction: column;
+  transition: transform 1s ease-out;
+}
+
+/* Tambahkan garis highlight di tengah reel */
+.reel-highlight {
+  position: absolute;
+  top: 50px; /* tinggi satu simbol */
+  left: 0;
+  width: 100%;
+  height: 50px;
+  border-top: 3px solid #ff0;
+  border-bottom: 3px solid #ff0;
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.reel {
+  position: relative;
+}
+
+/* Efek untuk simbol tengah (pemenang) */
+.reel-items .winning {
+  background: #333;
+  border: 2px solid #0f0;
+  border-radius: 5px;
+  box-shadow: 0 0 10px #0f0;
+}
