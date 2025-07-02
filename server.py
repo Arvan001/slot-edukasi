@@ -1,8 +1,8 @@
 import os
-import json
+import sqlite3
 import random
 from datetime import datetime
-from flask import Flask, request, jsonify, session, render_template, redirect, url_for
+from flask import Flask, request, jsonify, session, render_template, redirect, url_for, g
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 
@@ -10,20 +10,15 @@ from functools import wraps
 app = Flask(__name__)
 app.secret_key = os.urandom(32)
 app.config.update(
+    DATABASE=os.path.join(app.instance_path, 'users.db'),
     SESSION_COOKIE_SECURE=True,
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE='Lax',
-    PERMANENT_SESSION_LIFETIME=86400  # 1 day in seconds
+    PERMANENT_SESSION_LIFETIME=86400,  # 1 day in seconds
+    UPLOAD_FOLDER='static'
 )
 
-# Configuration
-DATA_DIR = "data"
-os.makedirs(DATA_DIR, exist_ok=True)
-
-USERS_FILE = os.path.join(DATA_DIR, "users.json")
-STATS_FILE = os.path.join(DATA_DIR, "game_stats.json")
-SETTINGS_FILE = os.path.join(DATA_DIR, "settings.json")
-
+# Default settings
 DEFAULT_SETTINGS = {
     "mode_otomatis": False,
     "persentase_menang": 0,
@@ -34,42 +29,73 @@ DEFAULT_SETTINGS = {
     "max_bet": 500000
 }
 
-# Helper functions
-def load_data(filename, default=None):
-    """Load JSON data from file"""
-    try:
-        with open(filename, 'r') as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return default if default is not None else {}
+# Database helper functions
+def get_db():
+    if 'db' not in g:
+        g.db = sqlite3.connect(app.config['DATABASE'])
+        g.db.row_factory = sqlite3.Row
+    return g.db
 
-def save_data(filename, data):
-    """Save data to JSON file"""
-    with open(filename, 'w') as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
+def close_db(e=None):
+    db = g.pop('db', None)
+    if db is not None:
+        db.close()
 
-def init_files():
-    """Initialize data files with defaults"""
-    if not os.path.exists(USERS_FILE):
-        save_data(USERS_FILE, {})
-    
-    if not os.path.exists(STATS_FILE):
-        save_data(STATS_FILE, {"menang": 0, "kalah": 0, "total_spin": 0})
-    
-    if not os.path.exists(SETTINGS_FILE):
-        save_data(SETTINGS_FILE, DEFAULT_SETTINGS)
-
-def validate_settings(settings):
-    """Validate and sanitize settings"""
-    return {
-        "mode_otomatis": bool(settings.get("mode_otomatis", False)),
-        "persentase_menang": max(0, min(100, int(settings.get("persentase_menang", 0)))),
-        "min_menang": max(0, int(settings.get("min_menang", 50000))),
-        "max_menang": max(0, int(settings.get("max_menang", 30000))),
-        "default_saldo": max(10000, int(settings.get("default_saldo", 100000))),
-        "min_saldo": max(0, int(settings.get("min_saldo", 0))),
-        "max_bet": max(1000, int(settings.get("max_bet", 500000)))
-    }
+def init_db():
+    with app.app_context():
+        db = get_db()
+        
+        # Create tables
+        db.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                saldo INTEGER DEFAULT 100000,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_update TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        db.execute('''
+            CREATE TABLE IF NOT EXISTS game_stats (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                menang INTEGER DEFAULT 0,
+                kalah INTEGER DEFAULT 0,
+                total_spin INTEGER DEFAULT 0
+            )
+        ''')
+        
+        db.execute('''
+            CREATE TABLE IF NOT EXISTS settings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                mode_otomatis BOOLEAN DEFAULT 0,
+                persentase_menang INTEGER DEFAULT 0,
+                min_menang INTEGER DEFAULT 50000,
+                max_menang INTEGER DEFAULT 30000,
+                default_saldo INTEGER DEFAULT 100000,
+                min_saldo INTEGER DEFAULT 0,
+                max_bet INTEGER DEFAULT 500000
+            )
+        ''')
+        
+        # Insert default settings if not exists
+        if db.execute('SELECT COUNT(*) FROM settings').fetchone()[0] == 0:
+            db.execute('''
+                INSERT INTO settings 
+                (mode_otomatis, persentase_menang, min_menang, max_menang, default_saldo, min_saldo, max_bet)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                DEFAULT_SETTINGS['mode_otomatis'],
+                DEFAULT_SETTINGS['persentase_menang'],
+                DEFAULT_SETTINGS['min_menang'],
+                DEFAULT_SETTINGS['max_menang'],
+                DEFAULT_SETTINGS['default_saldo'],
+                DEFAULT_SETTINGS['min_saldo'],
+                DEFAULT_SETTINGS['max_bet']
+            ))
+        
+        db.commit()
 
 # Authentication decorator
 def login_required(f):
@@ -80,8 +106,8 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# Initialize data files
-init_files()
+# Initialize database
+init_db()
 
 ### Routes ###
 @app.route('/')
@@ -97,14 +123,16 @@ def login():
             return redirect(url_for('game'))
         return render_template('login.html')
     
-    users = load_data(USERS_FILE, {})
     username = request.form.get('username', '').strip()
     password = request.form.get('password', '')
 
     if not username or not password:
         return render_template('login.html', error='Username dan password harus diisi')
 
-    if username not in users or not check_password_hash(users[username]['password'], password):
+    db = get_db()
+    user = db.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
+
+    if user is None or not check_password_hash(user['password'], password):
         return render_template('login.html', error='Username atau password salah')
 
     session.permanent = True
@@ -116,7 +144,6 @@ def register():
     if request.method == 'GET':
         return render_template('register.html')
     
-    users = load_data(USERS_FILE, {})
     username = request.form.get('username', '').strip()
     password = request.form.get('password', '')
     confirm = request.form.get('confirm_password', '')
@@ -127,17 +154,23 @@ def register():
     if password != confirm:
         return render_template('register.html', error='Konfirmasi password tidak cocok')
 
-    if username in users:
+    db = get_db()
+    
+    # Check if username exists
+    if db.execute('SELECT id FROM users WHERE username = ?', (username,)).fetchone():
         return render_template('register.html', error='Username sudah terdaftar')
 
-    settings = load_data(SETTINGS_FILE, DEFAULT_SETTINGS)
-    users[username] = {
-        'password': generate_password_hash(password),
-        'saldo': settings['default_saldo'],
-        'created_at': datetime.now().isoformat(),
-        'last_update': datetime.now().isoformat()
-    }
-    save_data(USERS_FILE, users)
+    # Get default saldo from settings
+    settings = db.execute('SELECT default_saldo FROM settings').fetchone()
+    default_saldo = settings['default_saldo'] if settings else DEFAULT_SETTINGS['default_saldo']
+
+    # Insert new user
+    db.execute(
+        'INSERT INTO users (username, password, saldo) VALUES (?, ?, ?)',
+        (username, generate_password_hash(password), default_saldo)
+    )
+    db.commit()
+    
     return redirect(url_for('login'))
 
 @app.route('/logout')
@@ -148,93 +181,116 @@ def logout():
 @app.route('/game')
 @login_required
 def game():
-    return render_template('game.html')  # You'll need to create this template
+    return render_template('game.html')
 
 ### API Routes ###
-@app.route('/api/user', methods=['GET', 'POST'])
+@app.route('/api/user', methods=['GET'])
 @login_required
 def user_data():
-    users = load_data(USERS_FILE)
-    username = session['username']
+    db = get_db()
+    user = db.execute('''
+        SELECT saldo, last_update 
+        FROM users 
+        WHERE username = ?
+    ''', (session['username'],)).fetchone()
     
-    if request.method == 'GET':
-        if username not in users:
-            settings = load_data(SETTINGS_FILE, DEFAULT_SETTINGS)
-            users[username] = {
-                'saldo': settings['default_saldo'],
-                'last_update': datetime.now().isoformat()
-            }
-            save_data(USERS_FILE, users)
+    if not user:
+        # Create user data if not exists (shouldn't happen)
+        settings = db.execute('SELECT default_saldo FROM settings').fetchone()
+        default_saldo = settings['default_saldo'] if settings else DEFAULT_SETTINGS['default_saldo']
+        
+        db.execute('''
+            INSERT INTO users (username, password, saldo)
+            VALUES (?, ?, ?)
+        ''', (session['username'], '', default_saldo))
+        db.commit()
         
         return jsonify({
-            'saldo': users[username]['saldo'],
-            'last_update': users[username].get('last_update')
+            'saldo': default_saldo,
+            'last_update': datetime.now().isoformat()
         })
     
-    elif request.method == 'POST':
-        try:
-            data = request.get_json()
-            users[username]['saldo'] = int(data.get('saldo', users[username]['saldo']))
-            users[username]['last_update'] = datetime.now().isoformat()
-            save_data(USERS_FILE, users)
-            return jsonify({'success': True})
-        except Exception as e:
-            return jsonify({'success': False, 'error': str(e)}), 400
+    return jsonify({
+        'saldo': user['saldo'],
+        'last_update': user['last_update']
+    })
 
-@app.route('/api/settings', methods=['GET', 'POST'])
+@app.route('/api/settings', methods=['GET'])
 @login_required
 def game_settings():
-    if request.method == 'GET':
-        return jsonify(load_data(SETTINGS_FILE, DEFAULT_SETTINGS))
-    
-    try:
-        new_settings = validate_settings(request.get_json())
-        save_data(SETTINGS_FILE, new_settings)
-        return jsonify({'success': True, 'settings': new_settings})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 400
+    db = get_db()
+    settings = db.execute('SELECT * FROM settings').fetchone()
+    return jsonify(dict(settings)) if settings else jsonify(DEFAULT_SETTINGS)
 
 @app.route('/api/spin', methods=['POST'])
 @login_required
 def spin():
     try:
-        users = load_data(USERS_FILE)
-        stats = load_data(STATS_FILE, {"menang": 0, "kalah": 0, "total_spin": 0})
-        settings = load_data(SETTINGS_FILE, DEFAULT_SETTINGS)
-        username = session['username']
+        db = get_db()
+        
+        # Get user data
+        user = db.execute('''
+            SELECT saldo FROM users WHERE username = ?
+        ''', (session['username'],)).fetchone()
+        
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        # Get settings
+        settings = db.execute('SELECT * FROM settings').fetchone()
+        if not settings:
+            settings = DEFAULT_SETTINGS
         
         # Validate bet
         bet = int(request.json.get('bet', 0))
-        if bet <= 0 or bet > users[username]['saldo'] or bet > settings['max_bet']:
+        if bet <= 0 or bet > user['saldo'] or bet > settings['max_bet']:
             return jsonify({'error': 'Invalid bet amount'}), 400
         
         # Update balance
-        users[username]['saldo'] -= bet
-        stats['total_spin'] += 1
+        new_balance = user['saldo'] - bet
+        db.execute('''
+            UPDATE users SET saldo = ?, last_update = ?
+            WHERE username = ?
+        ''', (new_balance, datetime.now().isoformat(), session['username']))
         
         # Check win condition
         win_chance = random.randint(1, 100)
         if win_chance <= settings['persentase_menang']:
             win_amount = random.randint(settings['min_menang'], settings['max_menang'])
-            users[username]['saldo'] += win_amount
-            stats['menang'] += win_amount
+            new_balance += win_amount
+            db.execute('''
+                UPDATE game_stats 
+                SET menang = menang + ?, total_spin = total_spin + 1
+            ''', (win_amount,))
             result = {'win': True, 'amount': win_amount}
         else:
-            stats['kalah'] += bet
+            db.execute('''
+                UPDATE game_stats 
+                SET kalah = kalah + ?, total_spin = total_spin + 1
+            ''', (bet,))
             result = {'win': False, 'amount': 0}
         
-        # Save updates
-        users[username]['last_update'] = datetime.now().isoformat()
-        save_data(USERS_FILE, users)
-        save_data(STATS_FILE, stats)
+        # Update user balance if won
+        if result['win']:
+            db.execute('''
+                UPDATE users SET saldo = ?, last_update = ?
+                WHERE username = ?
+            ''', (new_balance, datetime.now().isoformat(), session['username']))
+        
+        db.commit()
         
         return jsonify({
             'success': True,
-            'new_balance': users[username]['saldo'],
+            'new_balance': new_balance,
             'result': result
         })
     except Exception as e:
+        db.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# Register teardown function
+app.teardown_appcontext(close_db)
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
