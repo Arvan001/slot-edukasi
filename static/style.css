@@ -341,3 +341,31 @@ canvas#fireworks {
   50% { box-shadow: 0 0 60px orange; }
   100% { box-shadow: 0 0 30px gold; }
 }
+
+@keyframes bounceIn {
+  0% { transform: scale(0.5); opacity: 0; }
+  70% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+@keyframes shine {
+  0% { background-position: -100% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-bounceIn {
+  animation: bounceIn 0.6s ease forwards;
+}
+
+.animate-shine {
+  background-size: 200% 100%;
+  animation: shine 2s linear infinite;
+}
+
+.popup.hidden {
+  display: none;
+}
+
+.popup.show {
+  display: flex;
+}
