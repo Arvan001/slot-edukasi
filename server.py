@@ -96,31 +96,80 @@ def game():
     return render_template('game.html', username=username, balance=users[username]['saldo'])
 
 # API ENDPOINTS
-@app.route('/api/user', methods=['GET', 'POST'])
+@app.route('/api/user', methods=['GET'])
 @login_required
 def user_api():
     users = load_data(USERS_FILE)
     username = session['username']
     
-    if request.method == 'GET':
-        if username not in users:
-            return jsonify({"error": "User not found"}), 404
+    if username not in users:
+        return jsonify({
+            "success": False,
+            "error": "User not found"
+        }), 404
+        
+    return jsonify({
+        "success": True,
+        "saldo": users[username]['saldo'],
+        "last_update": users[username].get('last_update')
+    })
+
+@app.route('/api/spin', methods=['POST'])
+@login_required
+def spin():
+    try:
+        users = load_data(USERS_FILE)
+        username = session['username']
+        
+        # Validasi request
+        if not request.is_json:
+            return jsonify({
+                "success": False,
+                "error": "Request must be JSON"
+            }), 400
+            
+        data = request.get_json()
+        bet = int(data.get('bet', 0))
+        
+        # Validasi taruhan
+        if bet <= 0:
+            return jsonify({
+                "success": False,
+                "error": "Bet amount must be positive"
+            }), 400
+            
+        if bet > users[username]['saldo']:
+            return jsonify({
+                "success": False,
+                "error": "Insufficient balance"
+            }), 400
+            
+        # Proses spin
+        users[username]['saldo'] -= bet
+        
+        # Simulasi hasil spin (30% chance to win)
+        if random.randint(1, 100) <= 30:
+            win_amount = random.randint(bet, bet * 3)
+            users[username]['saldo'] += win_amount
+            result = {"win": True, "amount": win_amount}
+        else:
+            result = {"win": False, "amount": 0}
+        
+        # Simpan perubahan
+        users[username]['last_update'] = datetime.now().isoformat()
+        save_data(USERS_FILE, users)
         
         return jsonify({
             "success": True,
-            "saldo": users[username]['saldo'],
-            "last_update": users[username].get('last_update')
+            "new_balance": users[username]['saldo'],
+            "result": result
         })
-    
-    elif request.method == 'POST':
-        try:
-            data = request.get_json()
-            users[username]['saldo'] = int(data.get('saldo', users[username]['saldo']))
-            users[username]['last_update'] = datetime.now().isoformat()
-            save_data(USERS_FILE, users)
-            return jsonify({"success": True})
-        except Exception as e:
-            return jsonify({"success": False, "error": str(e)}), 400
+        
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
