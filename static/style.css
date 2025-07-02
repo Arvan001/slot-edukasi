@@ -417,3 +417,10 @@ canvas#fireworks {
   box-shadow: 0 0 10px gold;
   transform: scale(1.1);
 }
+
+.tengah-menang {
+  font-weight: bold;
+  transform: scale(1.2);
+  color: gold;
+  text-shadow: 1px 1px 2px #000;
+}
