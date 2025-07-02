@@ -6,12 +6,13 @@ from flask import Flask, request, jsonify, session, render_template, redirect, u
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 
+# Initialize Flask app
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'rahasia-kuat-123')
+app.secret_key = os.environ.get('SECRET_KEY', 'rahasia-slot-game-12345')
 app.config.update(
     SESSION_COOKIE_SECURE=True,
     SESSION_COOKIE_HTTPONLY=True,
-    PERMANENT_SESSION_LIFETIME=3600
+    PERMANENT_SESSION_LIFETIME=3600  # 1 hour
 )
 
 # File paths
@@ -21,37 +22,36 @@ USERS_FILE = os.path.join(DATA_DIR, "users.json")
 STATS_FILE = os.path.join(DATA_DIR, "stats.json")
 CONFIG_FILE = os.path.join(DATA_DIR, "config.json")
 
-# Default settings
+# Default game settings
 DEFAULT_CONFIG = {
     "min_bet": 1000,
     "max_bet": 100000,
-    "win_rate": 30,
+    "win_rate": 30,  # 30% chance to win
     "min_win": 5000,
     "max_win": 50000
 }
 
 # Initialize data files
-if not os.path.exists(USERS_FILE):
-    with open(USERS_FILE, 'w') as f:
-        json.dump({}, f)
-
-if not os.path.exists(STATS_FILE):
-    with open(STATS_FILE, 'w') as f:
-        json.dump({"spins": 0, "wins": 0, "losses": 0}, f)
-
-if not os.path.exists(CONFIG_FILE):
-    with open(CONFIG_FILE, 'w') as f:
-        json.dump(DEFAULT_CONFIG, f)
+def init_data_files():
+    if not os.path.exists(USERS_FILE):
+        with open(USERS_FILE, 'w') as f:
+            json.dump({}, f)
+    if not os.path.exists(STATS_FILE):
+        with open(STATS_FILE, 'w') as f:
+            json.dump({"total_spins": 0, "wins": 0, "losses": 0}, f)
+    if not os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, 'w') as f:
+            json.dump(DEFAULT_CONFIG, f)
 
 # Helper functions
-def load_data(file):
+def load_json(file):
     try:
         with open(file, 'r') as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         return {}
 
-def save_data(file, data):
+def save_json(file, data):
     with open(file, 'w') as f:
         json.dump(data, f, indent=2)
 
@@ -73,66 +73,75 @@ def home():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        users = load_data(USERS_FILE)
+        users = load_json(USERS_FILE)
         username = request.form.get('username')
         password = request.form.get('password')
         
         if username in users and check_password_hash(users[username]['password'], password):
             session['username'] = username
             return redirect(url_for('game'))
-        return render_template('login.html', error="Invalid credentials")
+        return render_template('login.html', error="Username atau password salah!")
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        users = load_data(USERS_FILE)
+        users = load_json(USERS_FILE)
         username = request.form.get('username')
         password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password')
+        
+        if password != confirm_password:
+            return render_template('register.html', error="Password tidak cocok!")
         
         if username in users:
-            return render_template('register.html', error="Username exists")
+            return render_template('register.html', error="Username sudah digunakan!")
         
         users[username] = {
             "password": generate_password_hash(password),
             "balance": 100000,
             "created_at": datetime.now().isoformat()
         }
-        save_data(USERS_FILE, users)
+        save_json(USERS_FILE, users)
         return redirect(url_for('login'))
     return render_template('register.html')
+
+@app.route('/logout')
+def logout():
+    session.pop('username', None)
+    return redirect(url_for('home'))
 
 @app.route('/game')
 @login_required
 def game():
-    users = load_data(USERS_FILE)
-    return render_template('game.html', 
-                         username=session['username'],
-                         balance=users[session['username']]['balance'])
+    users = load_json(USERS_FILE)
+    username = session['username']
+    return render_template('game.html', username=username, balance=users[username]['balance'])
 
+# API Endpoints
 @app.route('/api/spin', methods=['POST'])
 @login_required
 def spin():
     try:
-        users = load_data(USERS_FILE)
-        stats = load_data(STATS_FILE)
-        config = load_data(CONFIG_FILE)
+        users = load_json(USERS_FILE)
+        stats = load_json(STATS_FILE)
+        config = load_json(CONFIG_FILE)
         username = session['username']
         
         # Validate bet
         bet = int(request.json.get('bet', 0))
         if bet < config['min_bet']:
-            return jsonify({"error": f"Minimum bet is {config['min_bet']}"}), 400
+            return jsonify({"error": f"Minimum bet: {config['min_bet']}"}), 400
         if bet > config['max_bet']:
-            return jsonify({"error": f"Maximum bet is {config['max_bet']}"}), 400
+            return jsonify({"error": f"Maximum bet: {config['max_bet']}"}), 400
         if bet > users[username]['balance']:
-            return jsonify({"error": "Insufficient balance"}), 400
+            return jsonify({"error": "Saldo tidak cukup!"}), 400
         
-        # Process spin
+        # Deduct bet from balance
         users[username]['balance'] -= bet
-        stats['spins'] += 1
+        stats['total_spins'] += 1
         
-        # Check win
+        # Check if player wins
         if random.randint(1, 100) <= config['win_rate']:
             win_amount = random.randint(config['min_win'], config['max_win'])
             users[username]['balance'] += win_amount
@@ -143,8 +152,8 @@ def spin():
             result = {"status": "lose", "amount": 0}
         
         # Save data
-        save_data(USERS_FILE, users)
-        save_data(STATS_FILE, stats)
+        save_json(USERS_FILE, users)
+        save_json(STATS_FILE, stats)
         
         return jsonify({
             "success": True,
@@ -155,4 +164,5 @@ def spin():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
+    init_data_files()
     app.run(host='0.0.0.0', port=5000, debug=True)
