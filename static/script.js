@@ -49,27 +49,37 @@ function playSound(sound) {
 
 function spinReel(reel, hasil, delay) {
   return new Promise(resolve => {
-    const total = 30;
-    const tinggiSimbol = 60;
-    const posisiTengah = (total + 1) * tinggiSimbol;
+    const visibleCount = 3; // Jumlah simbol yang terlihat (atas, tengah, bawah)
+    const simbolCount = 30; // Simbol acak sebelum hasil
+    const tinggiSimbol = 50;
 
-    let isi = "";
-
-    for (let i = 0; i < total; i++) {
-      isi += `<div>${simbol[Math.floor(Math.random() * simbol.length)]}</div>`;
+    // Buat simbol acak
+    const simbolAcak = [];
+    for (let i = 0; i < simbolCount; i++) {
+      simbolAcak.push(simbol[Math.floor(Math.random() * simbol.length)]);
     }
 
-    isi += `<div>${simbol[Math.floor(Math.random() * simbol.length)]}</div>`; // atas
-    isi += `<div>${hasil}</div>`; // tengah
-    isi += `<div>${simbol[Math.floor(Math.random() * simbol.length)]}</div>`; // bawah
+    // Sisipkan simbol agar hasil ada di tengah
+    const simbolFinal = [
+      ...simbolAcak,
+      simbol[Math.floor(Math.random() * simbol.length)], // Atas
+      hasil, // Tengah
+      simbol[Math.floor(Math.random() * simbol.length)]  // Bawah
+    ];
 
-    reel.innerHTML = isi;
+    // Update HTML
+    reel.innerHTML = simbolFinal.map(sim => `<div>${sim}</div>`).join("");
+
+    // Reset posisi
     reel.style.transition = "none";
     reel.style.transform = `translateY(0px)`;
 
     setTimeout(() => {
+      const posisiTengah = (simbolCount + 1) * tinggiSimbol;
       reel.style.transition = `transform ${1 + delay}s ease-out`;
       reel.style.transform = `translateY(-${posisiTengah}px)`;
+
+      // Tunggu animasi selesai
       setTimeout(resolve, (1 + delay) * 1000);
     }, 50);
   });
