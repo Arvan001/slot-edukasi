@@ -1,20 +1,19 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Simulasi Slot Edukasi</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+  <title>777 Lucky Slot Machine</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Play:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>🎰 777 🎰</h1>
+  <div class="header">
+    <h1 class="title">777 LUCKY SLOT</h1>
+  </div>
 
-  <div class="slot-frame">
-    <div class="slot-title">💎 Lucky Machine 💎</div>
-    <div class="slot-container" id="slot">
-      
+  <div class="slot-machine">
+    <div class="reels-container">
       <!-- Reel 1 -->
       <div class="reel" id="r1">
         <div class="reel-highlight"></div>
@@ -32,50 +31,53 @@
         <div class="reel-highlight"></div>
         <div class="reel-items"></div>
       </div>
-
     </div>
+
+    <div class="control-panel">
+      <div class="balance-panel">
+        <div class="balance-display">
+          <span>💰 SALDO:</span>
+          <span class="balance-amount" id="saldo">Rp 0</span>
+        </div>
+        <div class="bet-display">
+          <span>💸 TARUHAN:</span>
+          <input type="number" class="bet-input" id="taruhan" value="10000" min="1000" step="1000">
+        </div>
+      </div>
+
+      <div class="buttons-container">
+        <button class="btn btn-spin" id="spinBtn">
+          <span>🎰</span> SPIN
+        </button>
+        <button class="btn btn-auto" id="autoBtn">
+          <span>🔁</span> AUTO: OFF
+        </button>
+        <input type="number" class="auto-spin-input" id="autoSpinCount" value="5" min="1">
+        <button class="btn btn-turbo" id="turboBtn">
+          <span>⚡</span> TURBO: OFF
+        </button>
+      </div>
+    </div>
+
+    <div class="message" id="pesan"></div>
   </div>
-
-  <!-- Control Panel -->
-  <div class="control-panel">
-    <div class="saldo-box">
-      💰 <span class="label">Saldo:</span> <span id="saldo" class="saldo">Rp 0</span>
-    </div>
-
-    <div class="taruhan-box">
-      💸 <span class="label">Taruhan:</span> 
-      <input type="number" id="taruhan" value="10000" min="1000" step="1000" />
-    </div>
-
-    <div class="buttons">
-      <button onclick="putar()" class="btn-spin">▶️ SPIN</button>
-      <button onclick="autoSpinToggle()" id="autoBtn" class="btn-auto">🔁 AUTO: OFF</button>
-      <input type="number" id="autoSpinCount" value="5" min="1" style="width: 50px;">
-      <button onclick="turboSpinToggle()" id="turboBtn" class="btn-turbo">⚡ TURBO: OFF</button>
-    </div>
-  </div>
-
-  <p id="pesan" style="text-align:center; font-weight:bold; color:red;"></p>
 
   <!-- WINNER POPUP -->
-  <div id="winner-popup" class="popup hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-    <div class="relative bg-yellow-400 rounded-3xl shadow-2xl p-10 text-center animate-bounceIn ring-4 ring-yellow-300">
-      <div class="absolute inset-0 rounded-3xl bg-[radial-gradient(circle,_rgba(255,255,255,0.2)_0%,_transparent_70%)] pointer-events-none"></div>
-      <h2 class="text-4xl font-extrabold text-white drop-shadow mb-4">🎉 KAMU MENANG 🎉</h2>
-      <p class="text-3xl font-bold text-white" id="win-amount">+Rp 0</p>
-      <button onclick="closeWinnerPopup()" class="mt-4 bg-white text-yellow-800 font-bold px-5 py-2 rounded-full text-lg hover:scale-105 transition shadow-lg">
-        Lanjutkan
-      </button>
-      <canvas id="fireworks" class="absolute top-0 left-0 w-full h-full pointer-events-none"></canvas>
+  <div id="winner-popup" class="popup">
+    <div class="popup-content">
+      <h2 class="win-title">🎉 YOU WIN! 🎉</h2>
+      <p class="win-amount" id="win-amount">+Rp 0</p>
+      <button class="popup-btn" id="closePopupBtn">LANJUTKAN</button>
     </div>
   </div>
 
   <!-- MUSIK DAN SUARA -->
-  <audio id="spinSound" src="{{ url_for('static', filename='sounds/spin.mp3') }}"></audio>
-  <audio id="winSound" src="{{ url_for('static', filename='sounds/win.mp3') }}"></audio>
-  <audio id="bgm" src="{{ url_for('static', filename='sounds/bgm.mp3') }}" autoplay loop></audio>
+  <audio id="spinSound" src="sounds/spin.mp3"></audio>
+  <audio id="winSound" src="sounds/win.mp3"></audio>
+  <audio id="bgm" src="sounds/bgm.mp3" autoplay loop></audio>
 
-  <!-- SCRIPT -->
-  <script src="{{ url_for('static', filename='script.js') }}"></script>
+  <!-- External JS -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
