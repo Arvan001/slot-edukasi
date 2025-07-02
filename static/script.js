@@ -161,19 +161,28 @@ async function putar() {
 }
 
 function animateWinPopup(jumlah) {
+  const judulEl = document.getElementById("winner-text");
+  const popup = document.getElementById("winner-popup");
+  
+  let judul = "🎉 WIN 🎉";
+  if (jumlah >= 1_000_000) judul = "🔥 SUPER WIN 🔥";
+  else if (jumlah >= 500_000) judul = "💥 MEGA WIN 💥";
+  else if (jumlah >= 100_000) judul = "✨ BIG WIN ✨";
+
+  // Tambahkan class animasi & show popup
+  popup.innerHTML = `
+    <div class="popup-content animated">
+      <h1 class="win-title">${judul}</h1>
+      <p id="win-amount" class="win-amount">+Rp 0</p>
+      <canvas id="confetti-canvas"></canvas>
+    </div>
+  `;
+  popup.style.display = "flex";
+
+  // Hitung naik jumlah kemenangan
   let current = 0;
   let durasi = Math.min(3000, 1000 + jumlah / 100);
   let langkah = Math.ceil(jumlah / (durasi / 30));
-
-  let judul = "🎉 WIN 🎉";
-  if (jumlah >= 1000000) judul = "🔥 SUPER WIN 🔥";
-  else if (jumlah >= 500000) judul = "💥 MEGA WIN 💥";
-  else if (jumlah >= 100000) judul = "✨ BIG WIN ✨";
-
-  popup.style.display = "flex";
-  popup.style.animation = "popFade 0.5s ease, zoomIn 0.5s ease";
-  winnerText.innerHTML = `<div class='bounce-text' style="font-size: 2.5rem; text-shadow: 0 0 15px gold;">${judul}</div><br><span id='win-amount' style="font-size: 1.5rem;">+Rp 0</span>`;
-
   const counter = setInterval(() => {
     current += langkah;
     if (current >= jumlah) {
@@ -181,14 +190,19 @@ function animateWinPopup(jumlah) {
       clearInterval(counter);
       setTimeout(() => {
         popup.style.display = "none";
-      }, 1200);
+      }, 1500);
     }
-    const dynamicWinAmount = document.getElementById("win-amount");
-    if (dynamicWinAmount) {
-      dynamicWinAmount.innerText = "+" + formatRupiah(current);
-    }
+    const el = document.getElementById("win-amount");
+    if (el) el.innerText = "+" + formatRupiah(current);
   }, 30);
+
+  // Confetti animasi
+  if (window.confetti) {
+    const canvas = document.getElementById('confetti-canvas');
+    confetti.create(canvas, { resize: true })({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+  }
 }
+
 
 function kirimLog(status, jumlah) {
   fetch("/log", {
