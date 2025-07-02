@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>777 Lucky Slot Machine</title>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Play:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
   <div class="header">
@@ -72,12 +72,12 @@
   </div>
 
   <!-- MUSIK DAN SUARA -->
-  <audio id="spinSound" src="sounds/spin.mp3"></audio>
-  <audio id="winSound" src="sounds/win.mp3"></audio>
-  <audio id="bgm" src="sounds/bgm.mp3" autoplay loop></audio>
+  <audio id="spinSound" src="{{ url_for('static', filename='sounds/spin.mp3') }}"></audio>
+  <audio id="winSound" src="{{ url_for('static', filename='sounds/win.mp3') }}"></audio>
+  <audio id="bgm" src="{{ url_for('static', filename='sounds/bgm.mp3') }}" autoplay loop></audio>
 
   <!-- External JS -->
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
-  <script src="script.js"></script>
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
