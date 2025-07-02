@@ -1,175 +1,228 @@
-// Game Configuration
-const config = {
-  symbols: ["🍒", "🍋", "🍊", "🔔", "⭐", "💎", "7️⃣"],
-  winningSymbols: ["💎", "⭐", "🔔", "7️⃣"],
-  winMultipliers: {
-    "💎": 10,
-    "⭐": 5,
-    "🔔": 3,
-    "7️⃣": 15
+class SlotGame {
+  constructor() {
+    this.balance = 0;
+    this.isSpinning = false;
+    this.autoSpin = false;
+    this.autoSpinCount = 0;
+    this.turboMode = false;
+    this.userId = localStorage.getItem('user_id') || `user_${Math.random().toString(36).substr(2, 9)}`;
+    
+    this.initElements();
+    this.initEventListeners();
+    this.loadBalance();
   }
-};
 
-// Game State
-let balance = 100000;
-let isSpinning = false;
-let autoSpin = false;
-let autoSpinCount = 0;
-let currentBet = 10000;
+  initElements() {
+    this.elements = {
+      reels: Array.from(document.querySelectorAll('.reel-items')),
+      balanceDisplay: document.getElementById('saldo'),
+      betInput: document.getElementById('taruhan'),
+      messageDisplay: document.getElementById('pesan'),
+      spinBtn: document.getElementById('spinBtn'),
+      autoBtn: document.getElementById('autoBtn'),
+      turboBtn: document.getElementById('turboBtn'),
+      popup: document.getElementById('winner-popup'),
+      winAmountDisplay: document.getElementById('win-amount'),
+      closePopupBtn: document.getElementById('closePopupBtn')
+    };
+  }
 
-// DOM Elements
-const reels = Array.from(document.querySelectorAll('.reel-items'));
-const balanceDisplay = document.getElementById('saldo');
-const betInput = document.getElementById('taruhan');
-const messageDisplay = document.getElementById('pesan');
-const spinBtn = document.getElementById('spinBtn');
-const autoBtn = document.getElementById('autoBtn');
-const turboBtn = document.getElementById('turboBtn');
-const popup = document.getElementById('winner-popup');
-const winAmountDisplay = document.getElementById('win-amount');
-const closePopupBtn = document.getElementById('closePopupBtn');
-
-// Initialize Game
-function initGame() {
-  updateBalance();
-  initializeReels();
-  setupEventListeners();
-}
-
-// Initialize reels with visible symbols
-function initializeReels() {
-  reels.forEach(reel => {
-    let symbolsHTML = '';
-    for (let i = 0; i < 3; i++) {
-      const randomSymbol = config.symbols[
-        Math.floor(Math.random() * config.symbols.length)
-      ];
-      symbolsHTML += `<div>${randomSymbol}</div>`;
+  initEventListeners() {
+    this.elements.spinBtn.addEventListener('click', () => this.spin());
+    this.elements.autoBtn.addEventListener('click', () => this.toggleAutoSpin());
+    this.elements.turboBtn.addEventListener('click', () => this.toggleTurboMode());
+    this.elements.closePopupBtn.addEventListener('click', () => this.closePopup());
+    
+    // Save user ID
+    if (!localStorage.getItem('user_id')) {
+      localStorage.setItem('user_id', this.userId);
     }
-    reel.innerHTML = symbolsHTML;
-    reel.style.transform = 'translateY(-33.33%)';
-  });
-}
+  }
 
-// Spin a single reel
-function spinReel(reel, targetSymbol, delay) {
-  return new Promise(resolve => {
-    const symbolHeight = 100 / 3; // 3 visible symbols
-    const spinDuration = 1 + Math.random() * 0.5;
+  async loadBalance() {
+    try {
+      const response = await fetch('/api/balance');
+      const data = await response.json();
+      this.balance = data.saldo;
+      this.updateBalanceDisplay();
+    } catch (error) {
+      console.error('Failed to load balance:', error);
+      this.showMessage('Gagal memuat saldo, menggunakan saldo default');
+      this.balance = 100000;
+      this.updateBalanceDisplay();
+    }
+  }
+
+  async spin() {
+    if (this.isSpinning) return;
     
-    // Create spinning effect
-    let spinSymbols = '';
-    for (let i = 0; i < 15; i++) {
-      spinSymbols += `<div>${config.symbols[
-        Math.floor(Math.random() * config.symbols.length)
-      ]}</div>`;
+    const betAmount = parseInt(this.elements.betInput.value) || 0;
+    
+    // Validate bet
+    if (betAmount <= 0 || betAmount > this.balance) {
+      this.showMessage('Taruhan tidak valid!');
+      return;
+    }
+
+    this.isSpinning = true;
+    this.balance -= betAmount;
+    this.updateBalanceDisplay();
+    this.showMessage('');
+    
+    // Disable buttons during spin
+    this.elements.spinBtn.disabled = true;
+    this.elements.autoBtn.disabled = true;
+    
+    try {
+      // Check win condition from server
+      const winResponse = await fetch('/api/should_win');
+      const winData = await winResponse.json();
+      
+      // Spin animation
+      const spinResult = await this.animateSpin(winData.bolehMenang ? winData.jumlahMenang : 0);
+      
+      // Update balance if won
+      if (spinResult.winAmount > 0) {
+        this.balance += spinResult.winAmount;
+        this.updateBalanceDisplay();
+        this.showWinPopup(spinResult.winAmount);
+      }
+      
+      // Log the spin result
+      await this.logSpin(spinResult.winAmount > 0 ? 'MENANG' : 'KALAH', 
+                        spinResult.winAmount > 0 ? spinResult.winAmount : betAmount);
+      
+    } catch (error) {
+      console.error('Spin error:', error);
+      this.showMessage('Terjadi kesalahan saat spin');
+    } finally {
+      this.isSpinning = false;
+      this.elements.spinBtn.disabled = false;
+      this.elements.autoBtn.disabled = false;
+      
+      // Continue auto spin if enabled
+      if (this.autoSpin && this.autoSpinCount > 0) {
+        this.autoSpinCount--;
+        setTimeout(() => this.spin(), this.turboMode ? 200 : 1000);
+      }
+    }
+  }
+
+  async animateSpin(winAmount) {
+    const targetSymbol = winAmount > 0 ? 
+      ['💎', '⭐', '🔔', '7️⃣'][Math.floor(Math.random() * 4)] : 
+      ['🍒', '🍋', '🍊', '🔔', '⭐', '💎', '7️⃣'][Math.floor(Math.random() * 7)];
+    
+    // Animate each reel sequentially
+    for (let i = 0; i < this.elements.reels.length; i++) {
+      await this.animateReel(this.elements.reels[i], targetSymbol, i * 0.2);
     }
     
-    reel.innerHTML = spinSymbols + `<div>${targetSymbol}</div>`;
-    reel.style.transition = `transform ${spinDuration}s cubic-bezier(0.1, 0.7, 0.1, 1)`;
-    reel.style.transform = `translateY(-${100 - symbolHeight}%)`;
+    // Check if all reels match (for visual win)
+    const reelSymbols = this.elements.reels.map(reel => reel.children[1].textContent);
+    const visualWin = reelSymbols[0] === reelSymbols[1] && reelSymbols[1] === reelSymbols[2];
     
-    setTimeout(() => {
-      // Show final symbols
-      reel.innerHTML = `
-        <div>${config.symbols[Math.floor(Math.random() * config.symbols.length)]}</div>
-        <div>${targetSymbol}</div>
-        <div>${config.symbols[Math.floor(Math.random() * config.symbols.length)]}</div>
-      `;
-      reel.style.transition = 'none';
-      reel.style.transform = `translateY(-${symbolHeight}%)`;
-      resolve();
-    }, spinDuration * 1000);
-  });
-}
-
-// Main spin function
-async function spin() {
-  if (isSpinning) return;
-  
-  currentBet = parseInt(betInput.value) || 10000;
-  if (currentBet > balance || currentBet <= 0) {
-    showMessage("Taruhan tidak valid!");
-    return;
+    return {
+      winAmount: visualWin ? winAmount : 0,
+      symbols: reelSymbols
+    };
   }
 
-  isSpinning = true;
-  balance -= currentBet;
-  updateBalance();
-  showMessage("");
-  
-  // Determine win condition
-  const shouldWin = Math.random() < 0.3; // 30% win chance
-  const winSymbol = shouldWin 
-    ? config.winningSymbols[
-        Math.floor(Math.random() * config.winningSymbols.length)
-      ] 
-    : config.symbols[Math.floor(Math.random() * config.symbols.length)];
-
-  // Spin reels sequentially
-  await spinReel(reels[0], winSymbol, 0);
-  await spinReel(reels[1], winSymbol, 0.1);
-  await spinReel(reels[2], winSymbol, 0.2);
-
-  // Check win
-  const reelSymbols = reels.map(reel => 
-    reel.children[1].textContent
-  );
-  
-  if (reelSymbols[0] === reelSymbols[1] && reelSymbols[1] === reelSymbols[2]) {
-    const winAmount = currentBet * (
-      config.winMultipliers[reelSymbols[0]] || 2
-    );
-    balance += winAmount;
-    updateBalance();
-    showWinPopup(winAmount);
-  } else {
-    showMessage("Coba lagi!");
+  animateReel(reel, targetSymbol, delay) {
+    return new Promise(resolve => {
+      const symbolHeight = 100 / 3; // 3 visible symbols
+      const spinDuration = 1 + Math.random() * 0.5;
+      
+      // Create spinning effect
+      let spinSymbols = '';
+      for (let i = 0; i < 15; i++) {
+        spinSymbols += `<div>${['🍒', '🍋', '🍊', '🔔', '⭐', '💎', '7️⃣'][Math.floor(Math.random() * 7)]}</div>`;
+      }
+      
+      reel.innerHTML = spinSymbols + `<div>${targetSymbol}</div>`;
+      reel.style.transition = `transform ${spinDuration}s cubic-bezier(0.1, 0.7, 0.1, 1)`;
+      reel.style.transform = `translateY(-${100 - symbolHeight}%)`;
+      
+      setTimeout(() => {
+        // Show final symbols
+        reel.innerHTML = `
+          <div>${['🍒', '🍋', '🍊', '🔔', '⭐', '💎', '7️⃣'][Math.floor(Math.random() * 7)]}</div>
+          <div>${targetSymbol}</div>
+          <div>${['🍒', '🍋', '🍊', '🔔', '⭐', '💎', '7️⃣'][Math.floor(Math.random() * 7)]}</div>
+        `;
+        reel.style.transition = 'none';
+        reel.style.transform = `translateY(-${symbolHeight}%)`;
+        resolve();
+      }, spinDuration * 1000);
+    });
   }
 
-  isSpinning = false;
-  
-  // Continue auto spin if active
-  if (autoSpin && autoSpinCount > 0) {
-    autoSpinCount--;
-    setTimeout(spin, 500);
+  toggleAutoSpin() {
+    this.autoSpin = !this.autoSpin;
+    this.elements.autoBtn.textContent = this.autoSpin ? "🔁 AUTO: ON" : "🔁 AUTO: OFF";
+    this.autoSpinCount = this.autoSpin ? 10 : 0;
+    
+    if (this.autoSpin && !this.isSpinning) {
+      this.spin();
+    }
+  }
+
+  toggleTurboMode() {
+    this.turboMode = !this.turboMode;
+    this.elements.turboBtn.textContent = this.turboMode ? "⚡ TURBO: ON" : "⚡ TURBO: OFF";
+  }
+
+  async logSpin(status, amount) {
+    try {
+      await fetch('/api/log', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          status: status,
+          jumlah: amount
+        })
+      });
+    } catch (error) {
+      console.error('Failed to log spin:', error);
+    }
+  }
+
+  async updateBalanceDisplay() {
+    this.elements.balanceDisplay.textContent = `Rp ${this.balance.toLocaleString('id-ID')}`;
+    
+    // Save balance to server
+    try {
+      await fetch('/api/balance', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          saldo: this.balance
+        })
+      });
+    } catch (error) {
+      console.error('Failed to update balance:', error);
+    }
+  }
+
+  showMessage(message) {
+    this.elements.messageDisplay.textContent = message;
+  }
+
+  showWinPopup(amount) {
+    this.elements.winAmountDisplay.textContent = `+Rp ${amount.toLocaleString('id-ID')}`;
+    this.elements.popup.classList.add('show');
+  }
+
+  closePopup() {
+    this.elements.popup.classList.remove('show');
   }
 }
 
-// UI Functions
-function updateBalance() {
-  balanceDisplay.textContent = `Rp ${balance.toLocaleString('id-ID')}`;
-}
-
-function showMessage(msg) {
-  messageDisplay.textContent = msg;
-}
-
-function showWinPopup(amount) {
-  winAmountDisplay.textContent = `+Rp ${amount.toLocaleString('id-ID')}`;
-  popup.classList.add('show');
-}
-
-function closePopup() {
-  popup.classList.remove('show');
-}
-
-// Event Listeners
-function setupEventListeners() {
-  spinBtn.addEventListener('click', spin);
-  closePopupBtn.addEventListener('click', closePopup);
-  
-  autoBtn.addEventListener('click', () => {
-    autoSpin = !autoSpin;
-    autoBtn.textContent = autoSpin ? "🔁 AUTO: ON" : "🔁 AUTO: OFF";
-    autoSpinCount = autoSpin ? 10 : 0;
-  });
-  
-  turboBtn.addEventListener('click', () => {
-    turboSpin = !turboSpin;
-    turboBtn.textContent = turboSpin ? "⚡ TURBO: ON" : "⚡ TURBO: OFF";
-  });
-}
-
-// Start the game
-initGame();
+// Initialize the game when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+  new SlotGame();
+});
