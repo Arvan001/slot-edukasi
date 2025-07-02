@@ -28,10 +28,9 @@ const reels = [
 const spinBtn = document.querySelector(".btn-spin");
 const spinSound = document.getElementById("spinSound");
 const winSound = document.getElementById("winSound");
-const bgm = document.getElementById("bgm");
 const saldoDisplay = document.getElementById("saldo");
-const popup = document.getElementById("winner-popup");
-const autoSpinInput = document.getElementById("autoSpinCount");
+const winPopup = document.getElementById("winner-popup");
+const winAmount = document.getElementById("win-amount");
 
 const simbol = ["🍒", "🍋", "🍊", "🔔", "⭐", "💎"];
 const simbolMenang = ["💎", "⭐", "🔔"];
@@ -52,37 +51,24 @@ function playSound(sound) {
 
 function spinReel(reel, hasil, delay) {
   return new Promise(resolve => {
-    const simbolCount = 30;
     const tinggiSimbol = 50;
-    const simbolAcak = [];
+    const simbolList = [];
 
-    // Tambah simbol acak
-    for (let i = 0; i < simbolCount; i++) {
-      simbolAcak.push(simbol[Math.floor(Math.random() * simbol.length)]);
+    for (let i = 0; i < 10; i++) {
+      simbolList.push(`<div>${simbol[Math.floor(Math.random() * simbol.length)]}</div>`);
     }
 
-    // Tambah 3 simbol akhir untuk tampil atas, tengah, bawah
-    const atas = simbol[Math.floor(Math.random() * simbol.length)];
-    const bawah = simbol[Math.floor(Math.random() * simbol.length)];
-    simbolAcak.push(atas);
-    simbolAcak.push(hasil);  // posisi tengah
-    simbolAcak.push(bawah);
+    simbolList.push(`<div>${simbol[Math.floor(Math.random() * simbol.length)]}</div>`); // atas
+    simbolList.push(`<div class='winning'>${hasil}</div>`); // tengah
+    simbolList.push(`<div>${simbol[Math.floor(Math.random() * simbol.length)]}</div>`); // bawah
 
-    // Render
-    reel.innerHTML = simbolAcak.map((sim, i) => {
-      if (i === simbolCount + 1) {
-        return `<div class="tengah-menang">${sim}</div>`;  // tengah (yang menang)
-      } else {
-        return `<div>${sim}</div>`;
-      }
-    }).join("");
+    reel.innerHTML = simbolList.join("");
 
-    // Reset posisi
     reel.style.transition = "none";
     reel.style.transform = `translateY(0px)`;
 
     setTimeout(() => {
-      const posisiTengah = (simbolCount + 1) * tinggiSimbol;  // simbolCount+1 = posisi simbol menang
+      const posisiTengah = (simbolList.length - 2) * tinggiSimbol;
       reel.style.transition = `transform ${1 + delay}s ease-out`;
       reel.style.transform = `translateY(-${posisiTengah}px)`;
       setTimeout(resolve, (1 + delay) * 1000);
@@ -90,54 +76,16 @@ function spinReel(reel, hasil, delay) {
   });
 }
 
-function showWinnerPopup(menang); {
-  let judul = "🎉 WIN 🎉";
-  if (jumlah >= 1_000_000) judul = "🔥 SUPER WIN 🔥";
-  else if (jumlah >= 500_000) judul = "💥 MEGA WIN 💥";
-  else if (jumlah >= 100_000) judul = "✨ BIG WIN ✨";
-
-  popup.innerHTML = `
-    <div class="relative bg-gradient-to-br from-yellow-400 to-orange-500 rounded-3xl shadow-2xl p-10 text-center animate-bounceIn ring-4 ring-yellow-300/50">
-      <div class="absolute inset-0 rounded-3xl bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.2)_0%,_transparent_70%)] animate-shine pointer-events-none"></div>
-      <h2 class="text-5xl font-extrabold text-white drop-shadow mb-4">${judul}</h2>
-      <p id="win-amount" class="text-4xl font-bold text-white">+Rp 0</p>
-      <button onclick="closeWinnerPopup()" class="mt-6 bg-white text-yellow-800 font-bold px-6 py-3 rounded-full text-lg hover:scale-105 transition shadow-lg">
-        Lanjutkan
-      </button>
-      <canvas id="confetti-canvas" class="absolute top-0 left-0 w-full h-full pointer-events-none"></canvas>
-    </div>
-  `;
-  popup.classList.remove("hidden");
-  popup.classList.add("show");
-
-  let current = 0;
-  let durasi = Math.min(3000, 1000 + jumlah / 100);
-  let langkah = Math.ceil(jumlah / (durasi / 30));
-  const counter = setInterval(() => {
-    current += langkah;
-    if (current >= jumlah) {
-      current = jumlah;
-      clearInterval(counter);
-    }
-    const el = document.getElementById("win-amount");
-    if (el) el.innerText = "+" + formatRupiah(current);
-  }, 30);
-
-  const canvas = document.getElementById("confetti-canvas");
-  if (window.confetti && canvas) {
-    confetti.create(canvas, { resize: true })({
-      particleCount: 150,
-      spread: 100,
-      origin: { y: 0.6 }
-    });
-  }
-
+function showWinnerPopup(jumlah) {
+  winAmount.innerText = `+${formatRupiah(jumlah)}`;
+  winPopup.classList.remove("hidden");
+  winPopup.classList.add("show");
   playSound(winSound);
 }
 
 function closeWinnerPopup() {
-  popup.classList.remove("show");
-  popup.classList.add("hidden");
+  winPopup.classList.add("hidden");
+  winPopup.classList.remove("show");
 }
 
 async function putar() {
@@ -155,7 +103,6 @@ async function putar() {
   spinKe++;
   saldo -= taruhan;
   tampilkanSaldo();
-  updateSaldoServer();
   document.getElementById("pesan").innerText = "";
   playSound(spinSound);
 
@@ -166,18 +113,8 @@ async function putar() {
   let jumlahMenang = 0;
 
   if (pengaturan.modeOtomatis) {
-    await fetch("/should_win")
-      .then(res => res.json())
-      .then(data => {
-        bolehMenang = data.bolehMenang;
-        jumlahMenang = parseInt(data.jumlahMenang) || 0;
-      })
-      .catch(() => {
-        bolehMenang = Math.random() * 100 < pengaturan.persentaseMenang;
-        jumlahMenang = Math.floor(
-          pengaturan.minMenang + Math.random() * (pengaturan.maxMenang - pengaturan.minMenang)
-        );
-      });
+    bolehMenang = Math.random() * 100 < pengaturan.persentaseMenang;
+    jumlahMenang = Math.floor(pengaturan.minMenang + Math.random() * (pengaturan.maxMenang - pengaturan.minMenang));
   } else {
     bolehMenang = pengaturan.kemenanganSpin.hasOwnProperty(spinKe);
     jumlahMenang = pengaturan.kemenanganSpin[spinKe] || taruhan * 5;
@@ -200,77 +137,17 @@ async function putar() {
   if (menang > 0) {
     saldo += menang;
     tampilkanSaldo();
-    updateSaldoServer();
-    animateWinPopup(menang);
-    kirimLog("MENANG", menang);
+    showWinnerPopup(menang);
   } else {
     document.getElementById("pesan").innerText = `😢 Kalah!`;
-    kirimLog("KALAH", taruhan);
   }
 
   isSpinning = false;
   spinBtn.disabled = false;
   spinBtn.style.opacity = 1;
-
-  if (autoSpin && (autoSpinTarget === 0 || autoSpinCounter < autoSpinTarget)) {
-    autoSpinCounter++;
-    autoSpinInterval = setTimeout(() => {
-      putar();
-    }, turboSpin ? 100 : 1000);
-  } else if (autoSpinTarget > 0 && autoSpinCounter >= autoSpinTarget) {
-    autoSpinToggle();
-  }
 }
 
-function kirimLog(status, jumlah) {
-  fetch("/log", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status, jumlah })
-  }).catch(e => console.error("Gagal kirim log:", e));
-}
-
-function updateSaldoServer() {
-  fetch("/api/update_saldo", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ saldo })
-  }).catch(e => console.error("Gagal update saldo:", e));
-}
-
-function autoSpinToggle() {
-  autoSpin = !autoSpin;
-  autoSpinCounter = 0;
-  autoSpinTarget = parseInt(autoSpinInput.value) || 0;
-  document.getElementById("autoBtn").textContent = autoSpin ? "🔁 AUTO: ON" : "🔁 AUTO: OFF";
-  if (autoSpin) putar();
-  else clearTimeout(autoSpinInterval);
-}
-
-function turboSpinToggle() {
-  turboSpin = !turboSpin;
-  document.getElementById("turboBtn").textContent = turboSpin ? "⚡ TURBO: ON" : "⚡ TURBO: OFF";
-}
-
-window.addEventListener('DOMContentLoaded', () => {
-  fetch("/api/saldo")
-    .then(res => res.json())
-    .then(data => {
-      saldo = data.saldo;
-      tampilkanSaldo();
-    });
-
-  fetch("/pengaturan")
-    .then(res => res.json())
-    .then(data => {
-      pengaturan.modeOtomatis = data.modeOtomatis;
-      pengaturan.persentaseMenang = data.persentaseMenang;
-      pengaturan.minMenang = data.minMenang || 50000;
-      pengaturan.maxMenang = data.maxMenang || 100000;
-    });
-
-  document.body.addEventListener('click', () => {
-    bgm.volume = 0.3;
-    bgm.play().catch(err => console.log("Autoplay ditolak:", err));
-  }, { once: true });
+document.addEventListener("DOMContentLoaded", () => {
+  saldo = 500000; // saldo awal dummy
+  tampilkanSaldo();
 });
