@@ -122,6 +122,39 @@ def user_api():
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 400
 
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'GET':
+        # Tampilkan form register
+        return render_template('register.html')
+    
+    # Handle POST request (submit form)
+    username = request.form.get('username', '').strip()
+    password = request.form.get('password', '')
+    confirm_password = request.form.get('confirm_password', '')
+
+    # Validasi input
+    if not username or not password:
+        return render_template('register.html', error='Username dan password harus diisi')
+
+    if password != confirm_password:
+        return render_template('register.html', error='Password tidak cocok')
+
+    users = load_data(USERS_FILE)
+    if username in users:
+        return render_template('register.html', error='Username sudah digunakan')
+
+    # Buat user baru
+    users[username] = {
+        'password': generate_password_hash(password),
+        'saldo': 100000,
+        'created_at': datetime.now().isoformat()
+    }
+    save_data(USERS_FILE, users)
+    
+    # Redirect ke login setelah registrasi berhasil
+    return redirect(url_for('login'))
+    
 @app.route('/api/spin', methods=['POST'])
 @login_required
 def spin():
