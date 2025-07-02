@@ -5,215 +5,154 @@ from datetime import datetime
 from flask import Flask, request, jsonify, session, render_template, redirect, url_for
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
-from threading import Lock
 
-# Initialize Flask app
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'default-secret-key-change-me')
+app.secret_key = os.environ.get('SECRET_KEY', 'rahasia-kuat-123')
 app.config.update(
     SESSION_COOKIE_SECURE=True,
     SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SAMESITE='Lax',
-    PERMANENT_SESSION_LIFETIME=86400  # 1 day in seconds
+    PERMANENT_SESSION_LIFETIME=3600
 )
 
-# Constants
-DEFAULT_BALANCE = 100000
+# File paths
 DATA_DIR = "data"
 os.makedirs(DATA_DIR, exist_ok=True)
 USERS_FILE = os.path.join(DATA_DIR, "users.json")
+STATS_FILE = os.path.join(DATA_DIR, "stats.json")
+CONFIG_FILE = os.path.join(DATA_DIR, "config.json")
 
-# Lock for thread-safe file operations
-user_data_lock = Lock()
+# Default settings
+DEFAULT_CONFIG = {
+    "min_bet": 1000,
+    "max_bet": 100000,
+    "win_rate": 30,
+    "min_win": 5000,
+    "max_win": 50000
+}
 
-# === Helper Functions ===
-def load_users():
-    """Load users data with thread safety"""
+# Initialize data files
+if not os.path.exists(USERS_FILE):
+    with open(USERS_FILE, 'w') as f:
+        json.dump({}, f)
+
+if not os.path.exists(STATS_FILE):
+    with open(STATS_FILE, 'w') as f:
+        json.dump({"spins": 0, "wins": 0, "losses": 0}, f)
+
+if not os.path.exists(CONFIG_FILE):
+    with open(CONFIG_FILE, 'w') as f:
+        json.dump(DEFAULT_CONFIG, f)
+
+# Helper functions
+def load_data(file):
     try:
-        with user_data_lock:
-            if not os.path.exists(USERS_FILE):
-                return {}
-            
-            with open(USERS_FILE, 'r') as f:
-                return json.load(f)
+        with open(file, 'r') as f:
+            return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         return {}
 
-def save_users(users):
-    """Save users data atomically with thread safety"""
-    temp_file = USERS_FILE + '.tmp'
-    try:
-        with user_data_lock:
-            with open(temp_file, 'w') as f:
-                json.dump(users, f, indent=2, ensure_ascii=False)
-            
-            # Atomic file replacement
-            os.replace(temp_file, USERS_FILE)
-    except Exception as e:
-        if os.path.exists(temp_file):
-            os.remove(temp_file)
-        raise e
+def save_data(file, data):
+    with open(file, 'w') as f:
+        json.dump(data, f, indent=2)
 
-def create_user(username, password, balance=DEFAULT_BALANCE):
-    """Create a new user"""
-    users = load_users()
-    if username in users:
-        raise ValueError("Username already exists")
-    
-    users[username] = {
-        "password": generate_password_hash(password),
-        "saldo": balance,
-        "created_at": datetime.now().isoformat(),
-        "last_login": None,
-        "last_update": datetime.now().isoformat()
-    }
-    save_users(users)
-
-def get_user(username):
-    """Get user data"""
-    users = load_users()
-    return users.get(username)
-
-def update_user(username, updates):
-    """Update user data"""
-    users = load_users()
-    if username not in users:
-        raise ValueError("User not found")
-    
-    # Preserve existing data
-    users[username].update({
-        **updates,
-        "last_update": datetime.now().isoformat()
-    })
-    save_users(users)
-
-def validate_user_credentials(username, password):
-    """Validate user login credentials"""
-    user = get_user(username)
-    if not user:
-        return False
-    return check_password_hash(user["password"], password)
-
-# === Authentication Decorator ===
 def login_required(f):
     @wraps(f)
-    def decorated_function(*args, **kwargs):
+    def decorated(*args, **kwargs):
         if 'username' not in session:
-            return jsonify({"error": "Unauthorized"}), 401
+            return jsonify({"error": "Login required"}), 401
         return f(*args, **kwargs)
-    return decorated_function
+    return decorated
 
-# === Routes ===
-@app.route('/', methods=['GET'])
+# Routes
+@app.route('/')
 def home():
     if 'username' in session:
         return redirect(url_for('game'))
-    return redirect(url_for('login'))
+    return render_template('login.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if 'username' in session:
-        return redirect(url_for('game'))
-    
     if request.method == 'POST':
-        username = request.form.get('username', '').strip()
-        password = request.form.get('password', '')
+        users = load_data(USERS_FILE)
+        username = request.form.get('username')
+        password = request.form.get('password')
         
-        if not username or not password:
-            return render_template('login.html', error='Username and password are required')
-        
-        if validate_user_credentials(username, password):
+        if username in users and check_password_hash(users[username]['password'], password):
             session['username'] = username
-            # Update last login time
-            update_user(username, {"last_login": datetime.now().isoformat()})
             return redirect(url_for('game'))
-        
-        return render_template('login.html', error='Invalid username or password')
-    
+        return render_template('login.html', error="Invalid credentials")
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        username = request.form.get('username', '').strip()
-        password = request.form.get('password', '')
-        confirm_password = request.form.get('confirm_password', '')
+        users = load_data(USERS_FILE)
+        username = request.form.get('username')
+        password = request.form.get('password')
         
-        if not username or not password:
-            return render_template('register.html', error='Username and password are required')
+        if username in users:
+            return render_template('register.html', error="Username exists")
         
-        if password != confirm_password:
-            return render_template('register.html', error='Passwords do not match')
-        
-        try:
-            create_user(username, password)
-            return redirect(url_for('login'))
-        except ValueError as e:
-            return render_template('register.html', error=str(e))
-    
+        users[username] = {
+            "password": generate_password_hash(password),
+            "balance": 100000,
+            "created_at": datetime.now().isoformat()
+        }
+        save_data(USERS_FILE, users)
+        return redirect(url_for('login'))
     return render_template('register.html')
-
-@app.route('/logout')
-def logout():
-    session.pop('username', None)
-    return redirect(url_for('login'))
 
 @app.route('/game')
 @login_required
 def game():
-    user = get_user(session['username'])
-    if not user:
-        session.clear()
-        return redirect(url_for('login'))
-    return render_template('game.html', username=session['username'], balance=user['saldo'])
+    users = load_data(USERS_FILE)
+    return render_template('game.html', 
+                         username=session['username'],
+                         balance=users[session['username']]['balance'])
 
-# === API Routes ===
-@app.route('/api/user', methods=['GET'])
+@app.route('/api/spin', methods=['POST'])
 @login_required
-def get_user_data():
-    username = session['username']
-    user = get_user(username)
-    if not user:
-        return jsonify({"error": "User not found"}), 404
-    
-    # Don't return password hash
-    user_data = {k: v for k, v in user.items() if k != 'password'}
-    return jsonify(user_data)
-
-@app.route('/api/user/balance', methods=['GET', 'POST'])
-@login_required
-def user_balance():
-    username = session['username']
-    user = get_user(username)
-    if not user:
-        return jsonify({"error": "User not found"}), 404
-    
-    if request.method == 'GET':
-        return jsonify({"balance": user['saldo']})
-    
-    # POST request to update balance
+def spin():
     try:
-        new_balance = int(request.json.get('balance', user['saldo']))
-        update_user(username, {"saldo": new_balance})
-        return jsonify({"success": True, "new_balance": new_balance})
+        users = load_data(USERS_FILE)
+        stats = load_data(STATS_FILE)
+        config = load_data(CONFIG_FILE)
+        username = session['username']
+        
+        # Validate bet
+        bet = int(request.json.get('bet', 0))
+        if bet < config['min_bet']:
+            return jsonify({"error": f"Minimum bet is {config['min_bet']}"}), 400
+        if bet > config['max_bet']:
+            return jsonify({"error": f"Maximum bet is {config['max_bet']}"}), 400
+        if bet > users[username]['balance']:
+            return jsonify({"error": "Insufficient balance"}), 400
+        
+        # Process spin
+        users[username]['balance'] -= bet
+        stats['spins'] += 1
+        
+        # Check win
+        if random.randint(1, 100) <= config['win_rate']:
+            win_amount = random.randint(config['min_win'], config['max_win'])
+            users[username]['balance'] += win_amount
+            stats['wins'] += 1
+            result = {"status": "win", "amount": win_amount}
+        else:
+            stats['losses'] += 1
+            result = {"status": "lose", "amount": 0}
+        
+        # Save data
+        save_data(USERS_FILE, users)
+        save_data(STATS_FILE, stats)
+        
+        return jsonify({
+            "success": True,
+            "balance": users[username]['balance'],
+            "result": result
+        })
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        return jsonify({"error": str(e)}), 500
 
-# === Debug Routes ===
-@app.route('/debug/users')
-def debug_users():
-    users = load_users()
-    return jsonify({
-        "count": len(users),
-        "users": list(users.keys()),
-        "current_user": session.get('username')
-    })
-
-# === Main ===
 if __name__ == '__main__':
-    # Create initial users file if not exists
-    if not os.path.exists(USERS_FILE):
-        save_users({})
-    
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
