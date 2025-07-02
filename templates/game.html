@@ -4,54 +4,78 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Simulasi Slot Edukasi</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <link href="https://fonts.googleapis.com/css2?family=Orbitron&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
 </head>
 <body>
-  <h1>🎰 fikri gacor 999 🎰</h1>
+  <h1>🎰 FIKRI GACOR 999 🎰</h1>
 
-  <div class="slot-frame fancy-frame">
+  <div class="slot-frame">
     <div class="slot-title">💎 Lucky Machine 💎</div>
     <div class="slot-container" id="slot">
-      <div class="reel fancy-reel" id="r1"><div class="reel-items"></div></div>
-      <div class="reel fancy-reel" id="r2"><div class="reel-items"></div></div>
-      <div class="reel fancy-reel" id="r3"><div class="reel-items"></div></div>
+      
+      <!-- Reel 1 -->
+      <div class="reel" id="r1">
+        <div class="reel-highlight"></div>
+        <div class="reel-items"></div>
+      </div>
+
+      <!-- Reel 2 -->
+      <div class="reel" id="r2">
+        <div class="reel-highlight"></div>
+        <div class="reel-items"></div>
+      </div>
+
+      <!-- Reel 3 -->
+      <div class="reel" id="r3">
+        <div class="reel-highlight"></div>
+        <div class="reel-items"></div>
+      </div>
+
     </div>
-    <div class="slot-lights"></div>
   </div>
 
+  <!-- Control Panel -->
   <div class="control-panel">
     <div class="saldo-box">
       💰 <span class="label">Saldo:</span> <span id="saldo" class="saldo">Rp 0</span>
     </div>
+
     <div class="taruhan-box">
       💸 <span class="label">Taruhan:</span> 
       <input type="number" id="taruhan" value="10000" min="1000" step="1000" />
     </div>
+
     <div class="buttons">
-      <button id="spinBtn" class="btn-spin">▶️ SPIN</button>
+      <button onclick="putar()" class="btn-spin">▶️ SPIN</button>
       <button onclick="autoSpinToggle()" id="autoBtn" class="btn-auto">🔁 AUTO: OFF</button>
+      <input type="number" id="autoSpinCount" value="5" min="1" style="width: 50px;">
       <button onclick="turboSpinToggle()" id="turboBtn" class="btn-turbo">⚡ TURBO: OFF</button>
     </div>
   </div>
 
-  <p id="pesan"></p>
+  <p id="pesan" style="text-align:center; font-weight:bold; color:red;"></p>
 
-  <!-- POPUP WIN -->
-  <div id="winner-popup" class="popup hidden">
-    <div class="popup-content">
-      <h2 id="winTitle">🎉 SUPER WIN!!! 🎉</h2>
-      <p id="win-amount">+Rp 0</p>
-      <button onclick="closeWinnerPopup()">Lanjutkan</button>
-      <canvas id="fireworks"></canvas>
+  <!-- WINNER POPUP -->
+  <div id="winner-popup" class="popup hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+    <div class="relative bg-yellow-400 rounded-3xl shadow-2xl p-10 text-center animate-bounceIn ring-4 ring-yellow-300">
+      <div class="absolute inset-0 rounded-3xl bg-[radial-gradient(circle,_rgba(255,255,255,0.2)_0%,_transparent_70%)] pointer-events-none"></div>
+      <h2 class="text-4xl font-extrabold text-white drop-shadow mb-4">🎉 KAMU MENANG 🎉</h2>
+      <p class="text-3xl font-bold text-white" id="win-amount">+Rp 0</p>
+      <button onclick="closeWinnerPopup()" class="mt-4 bg-white text-yellow-800 font-bold px-5 py-2 rounded-full text-lg hover:scale-105 transition shadow-lg">
+        Lanjutkan
+      </button>
+      <canvas id="fireworks" class="absolute top-0 left-0 w-full h-full pointer-events-none"></canvas>
     </div>
   </div>
 
-  <audio id="spinSound" src="/static/sounds/spin.mp3"></audio>
-  <audio id="winSound" src="/static/sounds/win.mp3"></audio>
-  <audio id="bgm" src="/static/sounds/bgm.mp3" autoplay loop></audio>
+  <!-- MUSIK DAN SUARA -->
+  <audio id="spinSound" src="{{ url_for('static', filename='sounds/spin.mp3') }}"></audio>
+  <audio id="winSound" src="{{ url_for('static', filename='sounds/win.mp3') }}"></audio>
+  <audio id="bgm" src="{{ url_for('static', filename='sounds/bgm.mp3') }}" autoplay loop></audio>
 
-  <script src="/static/script.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+  <!-- SCRIPT -->
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
