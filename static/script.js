@@ -30,6 +30,7 @@ const spinSound = document.getElementById("spinSound");
 const winSound = document.getElementById("winSound");
 const bgm = document.getElementById("bgm");
 const saldoDisplay = document.getElementById("saldo");
+const popup = document.getElementById("winner-popup");
 const autoSpinInput = document.getElementById("autoSpinCount");
 
 const simbol = ["🍒", "🍋", "🍊", "🔔", "⭐", "💎"];
@@ -53,20 +54,17 @@ function spinReel(reel, hasil, delay) {
   return new Promise(resolve => {
     const simbolCount = 30;
     const tinggiSimbol = 50;
-    const totalSimbol = simbolCount + 3; // Tambah 3 agar bisa tampil atas, tengah, bawah
+    const totalSimbol = simbolCount + 3;
     const simbolAcak = [];
 
-    // Buat simbol acak
     for (let i = 0; i < simbolCount; i++) {
       simbolAcak.push(simbol[Math.floor(Math.random() * simbol.length)]);
     }
 
-    // Sisipkan simbol pemenang di tengah
     simbolAcak.push(simbol[Math.floor(Math.random() * simbol.length)]); // atas
-    simbolAcak.push(hasil); // tengah (yang menang)
+    simbolAcak.push(hasil); // tengah
     simbolAcak.push(simbol[Math.floor(Math.random() * simbol.length)]); // bawah
 
-    // Tampilkan simbol
     reel.innerHTML = simbolAcak.map((sim, i) => {
       if (i === simbolCount + 1) {
         return `<div class="tengah-menang">${sim}</div>`;
@@ -79,7 +77,7 @@ function spinReel(reel, hasil, delay) {
     reel.style.transform = `translateY(0px)`;
 
     setTimeout(() => {
-      const posisiTengah = (simbolCount + 1) * tinggiSimbol; // Geser sampai simbol menang di tengah
+      const posisiTengah = (simbolCount + 1) * tinggiSimbol;
       reel.style.transition = `transform ${1 + delay}s ease-out`;
       reel.style.transform = `translateY(-${posisiTengah}px)`;
       setTimeout(resolve, (1 + delay) * 1000);
@@ -87,18 +85,52 @@ function spinReel(reel, hasil, delay) {
   });
 }
 
-function showWinnerPopup(amount) {
-  const popup = document.getElementById("winner-popup");
-  const winAmount = document.getElementById("win-amount");
-  winAmount.textContent = `+Rp ${amount.toLocaleString('id-ID')}`;
+function animateWinPopup(jumlah) {
+  let judul = "🎉 WIN 🎉";
+  if (jumlah >= 1_000_000) judul = "🔥 SUPER WIN 🔥";
+  else if (jumlah >= 500_000) judul = "💥 MEGA WIN 💥";
+  else if (jumlah >= 100_000) judul = "✨ BIG WIN ✨";
+
+  popup.innerHTML = `
+    <div class="relative bg-gradient-to-br from-yellow-400 to-orange-500 rounded-3xl shadow-2xl p-10 text-center animate-bounceIn ring-4 ring-yellow-300/50">
+      <div class="absolute inset-0 rounded-3xl bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.2)_0%,_transparent_70%)] animate-shine pointer-events-none"></div>
+      <h2 class="text-5xl font-extrabold text-white drop-shadow mb-4">${judul}</h2>
+      <p id="win-amount" class="text-4xl font-bold text-white">+Rp 0</p>
+      <button onclick="closeWinnerPopup()" class="mt-6 bg-white text-yellow-800 font-bold px-6 py-3 rounded-full text-lg hover:scale-105 transition shadow-lg">
+        Lanjutkan
+      </button>
+      <canvas id="confetti-canvas" class="absolute top-0 left-0 w-full h-full pointer-events-none"></canvas>
+    </div>
+  `;
   popup.classList.remove("hidden");
   popup.classList.add("show");
-  winSound.play();
-  confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
+
+  let current = 0;
+  let durasi = Math.min(3000, 1000 + jumlah / 100);
+  let langkah = Math.ceil(jumlah / (durasi / 30));
+  const counter = setInterval(() => {
+    current += langkah;
+    if (current >= jumlah) {
+      current = jumlah;
+      clearInterval(counter);
+    }
+    const el = document.getElementById("win-amount");
+    if (el) el.innerText = "+" + formatRupiah(current);
+  }, 30);
+
+  const canvas = document.getElementById("confetti-canvas");
+  if (window.confetti && canvas) {
+    confetti.create(canvas, { resize: true })({
+      particleCount: 150,
+      spread: 100,
+      origin: { y: 0.6 }
+    });
+  }
+
+  playSound(winSound);
 }
 
 function closeWinnerPopup() {
-  const popup = document.getElementById("winner-popup");
   popup.classList.remove("show");
   popup.classList.add("hidden");
 }
@@ -161,11 +193,10 @@ async function putar() {
   await spinReel(reels[2], hasil[2], 0.4);
 
   if (menang > 0) {
-    playSound(winSound);
     saldo += menang;
     tampilkanSaldo();
     updateSaldoServer();
-    showWinnerPopup(menang);
+    animateWinPopup(menang);
     kirimLog("MENANG", menang);
   } else {
     document.getElementById("pesan").innerText = `😢 Kalah!`;
