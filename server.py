@@ -6,7 +6,6 @@ from flask import Flask, request, jsonify, session, render_template, redirect, u
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 
-# Initialize Flask app
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'rahasia-slot-game-12345')
 app.config.update(
@@ -99,7 +98,7 @@ def register():
         
         users[username] = {
             "password": generate_password_hash(password),
-            "balance": 100000,
+            "saldo": 100000,
             "created_at": datetime.now().isoformat()
         }
         save_json(USERS_FILE, users)
@@ -116,9 +115,36 @@ def logout():
 def game():
     users = load_json(USERS_FILE)
     username = session['username']
-    return render_template('game.html', username=username, balance=users[username]['balance'])
+    return render_template('game.html', username=username, balance=users[username]['saldo'])
 
 # API Endpoints
+@app.route('/api/user', methods=['GET', 'POST'])
+@login_required
+def user_api():
+    username = session['username']
+    users = load_json(USERS_FILE)
+    
+    if request.method == 'GET':
+        if username not in users:
+            return jsonify({"error": "User not found"}), 404
+        
+        return jsonify({
+            "success": True,
+            "saldo": users[username]['saldo'],
+            "last_update": users[username].get('last_update')
+        })
+    
+    elif request.method == 'POST':
+        try:
+            new_balance = int(request.json.get('saldo', users[username]['saldo']))
+            users[username]['saldo'] = new_balance
+            users[username]['last_update'] = datetime.now().isoformat()
+            save_json(USERS_FILE, users)
+            
+            return jsonify({"success": True})
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 400
+
 @app.route('/api/spin', methods=['POST'])
 @login_required
 def spin():
@@ -128,40 +154,46 @@ def spin():
         config = load_json(CONFIG_FILE)
         username = session['username']
         
-        # Validate bet
+        # Validasi user
+        if username not in users:
+            return jsonify({"error": "User not found"}), 404
+            
+        # Validasi taruhan
         bet = int(request.json.get('bet', 0))
         if bet < config['min_bet']:
             return jsonify({"error": f"Minimum bet: {config['min_bet']}"}), 400
         if bet > config['max_bet']:
             return jsonify({"error": f"Maximum bet: {config['max_bet']}"}), 400
-        if bet > users[username]['balance']:
-            return jsonify({"error": "Saldo tidak cukup!"}), 400
-        
-        # Deduct bet from balance
-        users[username]['balance'] -= bet
+        if bet > users[username]['saldo']:
+            return jsonify({"error": "Insufficient balance"}), 400
+            
+        # Proses putaran
+        users[username]['saldo'] -= bet
         stats['total_spins'] += 1
         
-        # Check if player wins
+        # Logika kemenangan
         if random.randint(1, 100) <= config['win_rate']:
             win_amount = random.randint(config['min_win'], config['max_win'])
-            users[username]['balance'] += win_amount
+            users[username]['saldo'] += win_amount
             stats['wins'] += 1
-            result = {"status": "win", "amount": win_amount}
+            result = {"win": True, "amount": win_amount}
         else:
             stats['losses'] += 1
-            result = {"status": "lose", "amount": 0}
-        
-        # Save data
+            result = {"win": False, "amount": 0}
+            
+        # Simpan perubahan
+        users[username]['last_update'] = datetime.now().isoformat()
         save_json(USERS_FILE, users)
         save_json(STATS_FILE, stats)
         
         return jsonify({
             "success": True,
-            "balance": users[username]['balance'],
+            "new_balance": users[username]['saldo'],
             "result": result
         })
+        
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == '__main__':
     init_data_files()
