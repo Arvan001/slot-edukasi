@@ -409,3 +409,11 @@ canvas#fireworks {
   border-radius: 5px;
   box-shadow: 0 0 10px lime;
 }
+
+.tengah-menang {
+  background: linear-gradient(to bottom, #ff0, #ffa500);
+  border: 2px solid gold;
+  border-radius: 10px;
+  box-shadow: 0 0 10px gold;
+  transform: scale(1.1);
+}
