@@ -199,9 +199,14 @@ button:hover {
     width: 60px;
   }
 
-  .reel-items div {
-    font-size: 2rem;
-  }
+.reel-items div {
+  font-size: 2.5rem;
+  height: 50px;
+  line-height: 50px;
+  text-align: center;
+  user-select: none;
+}
+}
 
   .win-title {
     font-size: 2rem;
