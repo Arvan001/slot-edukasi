@@ -1,3 +1,4 @@
+// Game Configuration
 let pengaturan = {
   kemenanganSpin: { 2: 100000, 4: 100000 },
   modeOtomatis: true,
@@ -6,6 +7,7 @@ let pengaturan = {
   maxMenang: 100000
 };
 
+// Game State
 let saldo = 0;
 let spinKe = 0;
 let autoSpin = false;
@@ -15,16 +17,20 @@ let isSpinning = false;
 let autoSpinTarget = 0;
 let autoSpinCounter = 0;
 
+// Symbols
 const simbol = ["🍒", "🍋", "🍊", "🔔", "⭐", "💎", "🗿", "🍎"];
 const simbolMenang = ["💎", "⭐", "🔔", "🗿", "🍎", "🍊", "🍒", "🍋"];
 
+// DOM Elements
 const reels = [
   document.querySelector("#r1 .reel-items"),
   document.querySelector("#r2 .reel-items"),
   document.querySelector("#r3 .reel-items")
 ];
-
-const spinBtn = document.querySelector(".btn-spin");
+const spinBtn = document.getElementById("spinBtn");
+const autoBtn = document.getElementById("autoBtn");
+const turboBtn = document.getElementById("turboBtn");
+const closePopupBtn = document.getElementById("closePopupBtn");
 const spinSound = document.getElementById("spinSound");
 const winSound = document.getElementById("winSound");
 const bgm = document.getElementById("bgm");
@@ -32,7 +38,10 @@ const saldoDisplay = document.getElementById("saldo");
 const autoSpinInput = document.getElementById("autoSpinCount");
 const popup = document.getElementById("winner-popup");
 const winAmount = document.getElementById("win-amount");
+const message = document.getElementById("pesan");
+const taruhanInput = document.getElementById("taruhan");
 
+// Utility Functions
 function formatRupiah(nilai) {
   return 'Rp ' + nilai.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 }
@@ -47,32 +56,28 @@ function playSound(sound) {
   sound.play().catch(() => {});
 }
 
+// Reel Animation
 function spinReel(reel, hasil, delay) {
   return new Promise(resolve => {
-    const tinggiSimbol = 50; // HARUS sama dengan tinggi 1 simbol di CSS
-    const simbolCount = 30; // jumlah simbol acak untuk animasi
+    const tinggiSimbol = 60;
+    const simbolCount = 30;
     const simbolAcak = [];
 
-    // Buat simbol acak sebelum hasil
     for (let i = 0; i < simbolCount; i++) {
       simbolAcak.push(simbol[Math.floor(Math.random() * simbol.length)]);
     }
 
-    // Susun final: acak + [atas, hasil (tengah), bawah]
     const atas = simbol[Math.floor(Math.random() * simbol.length)];
     const bawah = simbol[Math.floor(Math.random() * simbol.length)];
     const semuaSimbol = [...simbolAcak, atas, hasil, bawah];
 
-    // Tampilkan semua simbol
     reel.innerHTML = semuaSimbol.map(sim => `<div>${sim}</div>`).join("");
-
-    // Reset posisi reel
     reel.style.transition = "none";
     reel.style.transform = "translateY(0px)";
 
     setTimeout(() => {
-      const posisiHasil = simbolAcak.length + 1; // index simbol hasil di tengah
-      const offset = (posisiHasil - 1) * tinggiSimbol; // geser sehingga hasil di tengah
+      const posisiHasil = simbolAcak.length + 1;
+      const offset = (posisiHasil - 1) * tinggiSimbol;
       reel.style.transition = `transform ${1 + delay}s ease-out`;
       reel.style.transform = `translateY(-${offset}px)`;
 
@@ -81,26 +86,25 @@ function spinReel(reel, hasil, delay) {
   });
 }
 
-
+// Winner Popup
 function showWinnerPopup(jumlah) {
   winAmount.innerText = "+ " + formatRupiah(jumlah);
-  popup.classList.remove("hidden");
   popup.classList.add("show");
   playSound(winSound);
   confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
 }
 
 function closeWinnerPopup() {
-  popup.classList.add("hidden");
   popup.classList.remove("show");
 }
 
+// Game Logic
 async function putar() {
   if (isSpinning) return;
 
-  const taruhan = parseInt(document.getElementById("taruhan").value);
+  const taruhan = parseInt(taruhanInput.value);
   if (taruhan > saldo || taruhan <= 0) {
-    document.getElementById("pesan").innerText = "Taruhan tidak valid!";
+    message.innerText = "Taruhan tidak valid!";
     return;
   }
 
@@ -111,7 +115,7 @@ async function putar() {
   saldo -= taruhan;
   tampilkanSaldo();
   updateSaldoServer();
-  document.getElementById("pesan").innerText = "";
+  message.innerText = "";
   playSound(spinSound);
 
   let hasil = [];
@@ -156,7 +160,7 @@ async function putar() {
     showWinnerPopup(menang);
     kirimLog("MENANG", menang);
   } else {
-    document.getElementById("pesan").innerText = "😢 Kalah!";
+    message.innerText = "😢 Kalah!";
     kirimLog("KALAH", taruhan);
   }
 
@@ -174,20 +178,22 @@ async function putar() {
   }
 }
 
+// Control Functions
 function autoSpinToggle() {
   autoSpin = !autoSpin;
   autoSpinCounter = 0;
   autoSpinTarget = parseInt(autoSpinInput.value) || 0;
-  document.getElementById("autoBtn").textContent = autoSpin ? "🔁 AUTO: ON" : "🔁 AUTO: OFF";
+  autoBtn.textContent = autoSpin ? "🔁 AUTO: ON" : "🔁 AUTO: OFF";
   if (autoSpin) putar();
   else clearTimeout(autoSpinInterval);
 }
 
 function turboSpinToggle() {
   turboSpin = !turboSpin;
-  document.getElementById("turboBtn").textContent = turboSpin ? "⚡ TURBO: ON" : "⚡ TURBO: OFF";
+  turboBtn.textContent = turboSpin ? "⚡ TURBO: ON" : "⚡ TURBO: OFF";
 }
 
+// Server Communication
 function updateSaldoServer() {
   fetch("/api/update_saldo", {
     method: "POST",
@@ -204,6 +210,13 @@ function kirimLog(status, jumlah) {
   }).catch(() => {});
 }
 
+// Event Listeners
+spinBtn.addEventListener("click", putar);
+autoBtn.addEventListener("click", autoSpinToggle);
+turboBtn.addEventListener("click", turboSpinToggle);
+closePopupBtn.addEventListener("click", closeWinnerPopup);
+
+// Initialization
 window.addEventListener("DOMContentLoaded", () => {
   fetch("/api/saldo")
     .then(res => res.json())
