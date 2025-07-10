@@ -61,7 +61,43 @@ def login():
         else:
             return jsonify(success=False, error="Username atau password salah.")
     return render_template('login.html')
+    
+@app.route('/api/save_settings', methods=['POST'])
+def save_settings():
+    data = request.get_json()
 
+    settings = {
+        'modeOtomatis': data.get('modeOtomatis', False),
+        'persentaseMenang': data.get('persentaseMenang', 0),
+        'minMenang': data.get('minMenang', 0),
+        'maxMenang': data.get('maxMenang', 0),
+        'defaultSaldo': data.get('defaultSaldo', 100000)
+    }
+
+    # Simpan ke file JSON
+    with open(os.path.join(DATA_DIR, 'settings.json'), 'w') as f:
+        json.dump(settings, f, indent=2)
+
+    return jsonify(success=True)
+
+@app.route('/api/get_settings')
+def get_settings():
+    path = os.path.join(DATA_DIR, 'settings.json')
+    if os.path.exists(path):
+        with open(path) as f:
+            settings = json.load(f)
+    else:
+        # Default settings
+        settings = {
+            'modeOtomatis': False,
+            'persentaseMenang': 0,
+            'minMenang': 50000,
+            'maxMenang': 100000,
+            'defaultSaldo': 100000
+        }
+
+    return jsonify(settings)
+    
 @app.route('/register', methods=['POST'])
 def register():
     users = load_users()
