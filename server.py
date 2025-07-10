@@ -97,6 +97,33 @@ def get_settings():
         }
 
     return jsonify(settings)
+
+@app.route('/api/save_settings', methods=['POST'])
+def save_settings():
+    data = request.get_json()
+    
+    users = load_users()
+    users['__settings__'] = {
+        'modeOtomatis': data.get('modeOtomatis', False),
+        'persentaseMenang': data.get('persentaseMenang', 0),
+        'minMenang': data.get('minMenang', 0),
+        'maxMenang': data.get('maxMenang', 0),
+        'defaultSaldo': data.get('defaultSaldo', 100000)
+    }
+    save_users(users)
+    return jsonify(success=True)
+
+@app.route('/api/get_settings')
+def get_settings():
+    users = load_users()
+    settings = users.get('__settings__', {
+        'modeOtomatis': False,
+        'persentaseMenang': 0,
+        'minMenang': 50000,
+        'maxMenang': 100000,
+        'defaultSaldo': 100000
+    })
+    return jsonify(settings)
     
 @app.route('/register', methods=['POST'])
 def register():
