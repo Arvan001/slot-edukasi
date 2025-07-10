@@ -61,70 +61,7 @@ def login():
         else:
             return jsonify(success=False, error="Username atau password salah.")
     return render_template('login.html')
-    
-@app.route('/api/save_settings', methods=['POST'])
-def save_settings():
-    data = request.get_json()
 
-    settings = {
-        'modeOtomatis': data.get('modeOtomatis', False),
-        'persentaseMenang': data.get('persentaseMenang', 0),
-        'minMenang': data.get('minMenang', 0),
-        'maxMenang': data.get('maxMenang', 0),
-        'defaultSaldo': data.get('defaultSaldo', 100000)
-    }
-
-    # Simpan ke file JSON
-    with open(os.path.join(DATA_DIR, 'settings.json'), 'w') as f:
-        json.dump(settings, f, indent=2)
-
-    return jsonify(success=True)
-
-@app.route('/api/get_settings')
-def get_settings():
-    path = os.path.join(DATA_DIR, 'settings.json')
-    if os.path.exists(path):
-        with open(path) as f:
-            settings = json.load(f)
-    else:
-        # Default settings
-        settings = {
-            'modeOtomatis': False,
-            'persentaseMenang': 0,
-            'minMenang': 50000,
-            'maxMenang': 100000,
-            'defaultSaldo': 100000
-        }
-
-    return jsonify(settings)
-
-@app.route('/api/save_settings', methods=['POST'])
-def save_settings():
-    data = request.get_json()
-    
-    users = load_users()
-    users['__settings__'] = {
-        'modeOtomatis': data.get('modeOtomatis', False),
-        'persentaseMenang': data.get('persentaseMenang', 0),
-        'minMenang': data.get('minMenang', 0),
-        'maxMenang': data.get('maxMenang', 0),
-        'defaultSaldo': data.get('defaultSaldo', 100000)
-    }
-    save_users(users)
-    return jsonify(success=True)
-
-@app.route('/api/get_settings')
-def get_settings():
-    users = load_users()
-    settings = users.get('__settings__', {
-        'modeOtomatis': False,
-        'persentaseMenang': 0,
-        'minMenang': 50000,
-        'maxMenang': 100000,
-        'defaultSaldo': 100000
-    })
-    return jsonify(settings)
-    
 @app.route('/register', methods=['POST'])
 def register():
     users = load_users()
@@ -178,11 +115,16 @@ def api_spin():
         return jsonify(success=False, error="Saldo tidak mencukupi")
 
     import random
-    win_chance = 0.3
-    is_win = random.random() < win_chance
+    settings = users.get('__settings__', {})
+    win_chance = settings.get('persentaseMenang', 30) / 100
+    min_win = settings.get('minMenang', 50000)
+    max_win = settings.get('maxMenang', 100000)
+    mode_otomatis = settings.get('modeOtomatis', False)
+
+    is_win = random.random() < win_chance if mode_otomatis else random.random() < 0.3
 
     if is_win:
-        win_amount = random.randint(50000, 100000)
+        win_amount = random.randint(min_win, max_win)
         user['saldo'] += (win_amount - bet)
     else:
         win_amount = 0
@@ -195,6 +137,33 @@ def api_spin():
         'win': is_win,
         'amount': win_amount
     })
+
+@app.route('/api/save_settings', methods=['POST'])
+def save_settings():
+    data = request.get_json()
+    
+    users = load_users()
+    users['__settings__'] = {
+        'modeOtomatis': data.get('modeOtomatis', False),
+        'persentaseMenang': data.get('persentaseMenang', 0),
+        'minMenang': data.get('minMenang', 0),
+        'maxMenang': data.get('maxMenang', 0),
+        'defaultSaldo': data.get('defaultSaldo', 100000)
+    }
+    save_users(users)
+    return jsonify(success=True)
+
+@app.route('/api/get_settings')
+def get_settings():
+    users = load_users()
+    settings = users.get('__settings__', {
+        'modeOtomatis': False,
+        'persentaseMenang': 0,
+        'minMenang': 50000,
+        'maxMenang': 100000,
+        'defaultSaldo': 100000
+    })
+    return jsonify(settings)
 
 # Untuk debugging
 @app.route('/admin/users')
