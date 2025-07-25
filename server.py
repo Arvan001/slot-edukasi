@@ -55,19 +55,18 @@ def index():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        data = request.get_json()  # <- Perbaikan di sini!
-        username = data.get('username')
-        password = data.get('password')
-        
+        # Ambil data dari form HTML biasa
+        username = request.form['username']
+        password = request.form['password']
+
         user = get_db().execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
         if user and check_password_hash(user['password'], password):
             session['username'] = username
-            return jsonify(success=True)
+            return redirect(url_for('game'))  # ganti sesuai halaman utama kamu
         else:
-            return jsonify(success=False, error="Username atau password salah.")
-    
-    return render_template('login.html')
+            return render_template('login.html', error='Username atau password salah.')
 
+    return render_template('login.html')
 
 @app.route('/register', methods=['POST'])
 def register():
