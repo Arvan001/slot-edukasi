@@ -55,17 +55,19 @@ def index():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        data = request.json
+        data = request.get_json()  # <- Perbaikan di sini!
         username = data.get('username')
         password = data.get('password')
-
+        
         user = get_db().execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
         if user and check_password_hash(user['password'], password):
             session['username'] = username
             return jsonify(success=True)
         else:
             return jsonify(success=False, error="Username atau password salah.")
+    
     return render_template('login.html')
+
 
 @app.route('/register', methods=['POST'])
 def register():
