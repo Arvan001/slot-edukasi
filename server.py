@@ -167,5 +167,5 @@ def save_settings():
 # ------------------ INIT DB ------------------ #
 if __name__ == '__main__':
     if not os.path.exists(DATABASE):
-        init_db()
+        init_db()  # membuat tabel dari schema.sql jika belum ada
     app.run(debug=True, host='0.0.0.0')
